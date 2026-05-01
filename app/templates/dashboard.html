@@ -1,10 +1,121 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Table Stack v4</title>
+    <meta charset="UTF-8">
+    <title>{{ dashboard.page.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
-    <h1>Table Stack v4 Dashboard</h1>
-    <p>Restaurant intelligence system is running.</p>
+    <div class="app-shell">
+
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">TS</div>
+                <div>
+                    <h2>Table Stack</h2>
+                    <p>v4 Intelligence</p>
+                </div>
+            </div>
+
+            <nav class="nav">
+                <a class="active" href="/dashboard">Dashboard</a>
+                <a href="#">Sales</a>
+                <a href="#">Labor</a>
+                <a href="#">Staffing</a>
+                <a href="#">Reports</a>
+                <a href="#">Forecasting</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <h1>{{ dashboard.page.title }}</h1>
+                    <p>{{ dashboard.page.subtitle }}</p>
+                </div>
+
+                <div class="header-actions">
+                    <button>Import Report</button>
+                    <button class="primary">Generate Insights</button>
+                </div>
+            </header>
+
+            <section class="metrics-grid">
+                {% for metric in dashboard.summary_metrics %}
+                <div class="metric-card">
+                    <div class="metric-topline">
+                        <h3>{{ metric.label }}</h3>
+                        <span class="status {{ metric.status }}">{{ metric.change }}</span>
+                    </div>
+                    <div class="metric-value">{{ metric.value }}</div>
+                    <p>{{ metric.description }}</p>
+                </div>
+                {% endfor %}
+            </section>
+
+            <section class="content-grid">
+                <div class="panel large-panel">
+                    <div class="panel-header">
+                        <h2>Weekly Performance Snapshot</h2>
+                        <p>Sales, labor spend, and labor percentage by day.</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Sales</th>
+                                <th>Labor</th>
+                                <th>Labor %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in dashboard.weekly_snapshot %}
+                            <tr>
+                                <td>{{ row.day }}</td>
+                                <td>{{ row.sales }}</td>
+                                <td>{{ row.labor }}</td>
+                                <td>{{ row.labor_percent }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Operational Insights</h2>
+                        <p>Early intelligence generated from mock data.</p>
+                    </div>
+
+                    <div class="insight-list">
+                        {% for insight in dashboard.insight_cards %}
+                        <div class="insight-card">
+                            <h3>{{ insight.title }}</h3>
+                            <strong>{{ insight.value }}</strong>
+                            <p>{{ insight.details }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel roadmap-panel">
+                <div class="panel-header">
+                    <h2>Expansion Modules</h2>
+                    <p>Designed for future 1,000+ line feature upgrades without breaking the core app.</p>
+                </div>
+
+                <div class="module-grid">
+                    {% for module in dashboard.future_modules %}
+                    <div class="module-card">
+                        {{ module }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </main>
+
+    </div>
 </body>
 </html>

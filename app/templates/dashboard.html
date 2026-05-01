@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{{ dashboard.page.title }}</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
-
 
 <body>
     <div class="app-shell">
 
+        <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="brand">
                 <div class="brand-mark">TS</div>
@@ -29,12 +33,20 @@
                 <a href="#">Reports</a>
                 <a href="#">Forecasting</a>
             </nav>
+
+            <div class="sidebar-footer">
+                <p>System Status</p>
+                <strong>Online</strong>
+            </div>
         </aside>
 
+        <!-- MAIN CONTENT -->
         <main class="main-content">
 
+            <!-- HEADER -->
             <header class="page-header">
                 <div>
+                    <p class="eyebrow">Restaurant Intelligence Command Center</p>
                     <h1>{{ dashboard.page.title }}</h1>
                     <p>{{ dashboard.page.subtitle }}</p>
                 </div>
@@ -45,6 +57,24 @@
                 </div>
             </header>
 
+            <!-- HERO SUMMARY -->
+            <section class="hero-panel">
+                <div>
+                    <p class="eyebrow">Weekly Overview</p>
+                    <h2>Sales, labor, and staffing performance at a glance.</h2>
+                    <p>
+                        This dashboard is powered by structured service-layer data and is prepared
+                        for future database, OCR, forecasting, and AI modules.
+                    </p>
+                </div>
+
+                <div class="hero-status">
+                    <span class="pulse-dot"></span>
+                    Live calculation engine active
+                </div>
+            </section>
+
+            <!-- METRICS -->
             <section class="metrics-grid">
                 {% for metric in dashboard.summary_metrics %}
                 <div class="metric-card"
@@ -64,35 +94,26 @@
                 {% endfor %}
             </section>
 
+            <!-- CHART + INSIGHTS GRID -->
             <section class="content-grid">
 
-                <div class="panel large-panel">
-                    <div class="panel-header">
-                        <h2>Weekly Performance Snapshot</h2>
-                        <p>Sales, labor spend, and labor percentage by day.</p>
+                <div class="panel large-panel chart-panel">
+                    <div class="panel-header split">
+                        <div>
+                            <h2>Sales vs Labor Trend</h2>
+                            <p>Visual comparison of weekly revenue and labor cost.</p>
+                        </div>
+
+                        <div class="panel-tabs">
+                            <button class="tab active" type="button">Weekly</button>
+                            <button class="tab" type="button">Monthly</button>
+                            <button class="tab" type="button">Forecast</button>
+                        </div>
                     </div>
 
-                    <table id="weekly-table">
-                        <thead>
-                            <tr>
-                                <th>Day</th>
-                                <th>Sales</th>
-                                <th>Labor</th>
-                                <th>Labor %</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {% for row in dashboard.weekly_snapshot %}
-                            <tr data-day="{{ row.day }}">
-                                <td>{{ row.day }}</td>
-                                <td>{{ row.sales }}</td>
-                                <td>{{ row.labor }}</td>
-                                <td>{{ row.labor_percent }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="chart-container">
+                        <canvas id="salesLaborChart"></canvas>
+                    </div>
                 </div>
 
                 <div class="panel">
@@ -114,17 +135,53 @@
 
             </section>
 
-            <section class="panel chart-panel">
-                <div class="panel-header">
-                    <h2>Sales vs Labor Trend</h2>
-                    <p>Chart integration coming next phase.</p>
+            <!-- WEEKLY TABLE -->
+            <section class="panel">
+                <div class="panel-header split">
+                    <div>
+                        <h2>Weekly Performance Snapshot</h2>
+                        <p>Sales, labor spend, and labor percentage by day.</p>
+                    </div>
+
+                    <button class="ghost-button" type="button">Export CSV</button>
                 </div>
 
-                <div class="chart-placeholder">
-                    <canvas id="salesLaborChart" height="120"></canvas>
+                <div class="table-wrap">
+                    <table id="weekly-table">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Sales</th>
+                                <th>Labor</th>
+                                <th>Labor %</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in dashboard.weekly_snapshot %}
+                            <tr data-day="{{ row.day }}">
+                                <td>{{ row.day }}</td>
+                                <td>{{ row.sales }}</td>
+                                <td>{{ row.labor }}</td>
+                                <td>{{ row.labor_percent }}</td>
+                                <td>
+                                    {% if row.labor_percent.replace('%', '')|float <= 25 %}
+                                        <span class="status positive">Efficient</span>
+                                    {% elif row.labor_percent.replace('%', '')|float <= 28 %}
+                                        <span class="status warning">Watch</span>
+                                    {% else %}
+                                        <span class="status danger">High</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
+            <!-- MODULE ROADMAP -->
             <section class="panel roadmap-panel">
                 <div class="panel-header">
                     <h2>Expansion Modules</h2>
@@ -134,20 +191,22 @@
                 <div class="module-grid">
                     {% for module in dashboard.future_modules %}
                     <div class="module-card">
-                        {{ module }}
+                        <span>Module</span>
+                        <strong>{{ module }}</strong>
                     </div>
                     {% endfor %}
                 </div>
             </section>
 
         </main>
-
     </div>
 
+    <!-- Backend data exposed safely to frontend JS -->
     <script>
         const dashboardData = {{ dashboard | tojson }};
         console.log("Dashboard data loaded:", dashboardData);
     </script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

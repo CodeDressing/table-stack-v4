@@ -2,9 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ dashboard.page.title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
+
+
+
 <body>
     <div class="app-shell">
 
@@ -28,6 +32,7 @@
         </aside>
 
         <main class="main-content">
+
             <header class="page-header">
                 <div>
                     <h1>{{ dashboard.page.title }}</h1>
@@ -35,18 +40,24 @@
                 </div>
 
                 <div class="header-actions">
-                    <button>Import Report</button>
-                    <button class="primary">Generate Insights</button>
+                    <button id="import-btn">Import Report</button>
+                    <button class="primary" id="insight-btn">Generate Insights</button>
                 </div>
             </header>
 
             <section class="metrics-grid">
                 {% for metric in dashboard.summary_metrics %}
-                <div class="metric-card">
+                <div class="metric-card"
+                     data-metric-label="{{ metric.label }}"
+                     data-status="{{ metric.status }}">
+
                     <div class="metric-topline">
                         <h3>{{ metric.label }}</h3>
-                        <span class="status {{ metric.status }}">{{ metric.change }}</span>
+                        <span class="status {{ metric.status }}">
+                            {{ metric.change }}
+                        </span>
                     </div>
+
                     <div class="metric-value">{{ metric.value }}</div>
                     <p>{{ metric.description }}</p>
                 </div>
@@ -54,13 +65,14 @@
             </section>
 
             <section class="content-grid">
+
                 <div class="panel large-panel">
                     <div class="panel-header">
                         <h2>Weekly Performance Snapshot</h2>
                         <p>Sales, labor spend, and labor percentage by day.</p>
                     </div>
 
-                    <table>
+                    <table id="weekly-table">
                         <thead>
                             <tr>
                                 <th>Day</th>
@@ -69,9 +81,10 @@
                                 <th>Labor %</th>
                             </tr>
                         </thead>
+
                         <tbody>
                             {% for row in dashboard.weekly_snapshot %}
-                            <tr>
+                            <tr data-day="{{ row.day }}">
                                 <td>{{ row.day }}</td>
                                 <td>{{ row.sales }}</td>
                                 <td>{{ row.labor }}</td>
@@ -85,12 +98,12 @@
                 <div class="panel">
                     <div class="panel-header">
                         <h2>Operational Insights</h2>
-                        <p>Early intelligence generated from mock data.</p>
+                        <p>Early intelligence generated from computed data.</p>
                     </div>
 
                     <div class="insight-list">
                         {% for insight in dashboard.insight_cards %}
-                        <div class="insight-card">
+                        <div class="insight-card" data-insight="{{ insight.title }}">
                             <h3>{{ insight.title }}</h3>
                             <strong>{{ insight.value }}</strong>
                             <p>{{ insight.details }}</p>
@@ -98,12 +111,24 @@
                         {% endfor %}
                     </div>
                 </div>
+
+            </section>
+
+            <section class="panel chart-panel">
+                <div class="panel-header">
+                    <h2>Sales vs Labor Trend</h2>
+                    <p>Chart integration coming next phase.</p>
+                </div>
+
+                <div class="chart-placeholder">
+                    <canvas id="salesLaborChart" height="120"></canvas>
+                </div>
             </section>
 
             <section class="panel roadmap-panel">
                 <div class="panel-header">
                     <h2>Expansion Modules</h2>
-                    <p>Designed for future 1,000+ line feature upgrades without breaking the core app.</p>
+                    <p>Designed for large-scale feature expansion without breaking the system.</p>
                 </div>
 
                 <div class="module-grid">
@@ -114,8 +139,15 @@
                     {% endfor %}
                 </div>
             </section>
+
         </main>
 
     </div>
+
+    <script>
+        const dashboardData = {{ dashboard | tojson }};
+        console.log("Dashboard data loaded:", dashboardData);
+    </script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

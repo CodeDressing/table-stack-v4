@@ -2,211 +2,254 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{{ dashboard.page.title }} | Table Stack v4</title>
 
-    <title>{{ dashboard.page.title }}</title>
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
 
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Main Dashboard CSS (your enhanced version) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
-    <div class="app-shell">
 
-        <!-- SIDEBAR -->
-        <aside class="sidebar">
-            <div class="brand">
-                <div class="brand-mark">TS</div>
-                <div>
-                    <h2>Table Stack</h2>
-                    <p>v4 Intelligence</p>
-                </div>
+<div class="app-shell">
+
+    <!-- ========================================================= -->
+    <!-- SIDEBAR (with dynamic active state)                       -->
+    <!-- ========================================================= -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">TS</div>
+            <div>
+                <h2>Table Stack</h2>
+                <p>v4 Intelligence</p>
             </div>
+        </div>
 
-            <nav class="nav">
-                <a class="active" href="/dashboard">Dashboard</a>
-                <a href="#">Sales</a>
-                <a href="#">Labor</a>
-                <a href="#">Staffing</a>
-                <a href="#">Reports</a>
-                <a href="#">Forecasting</a>
-            </nav>
+        <nav class="nav">
+            <a href="/dashboard" class="active">📊 Dashboard</a>
+            <a href="#" id="nav-sales">💰 Sales</a>
+            <a href="#" id="nav-labor">⏱️ Labor</a>
+            <a href="#" id="nav-staffing">👥 Staffing</a>
+            <a href="#" id="nav-reports">📑 Reports</a>
+            <a href="#" id="nav-forecast">🔮 Forecasting</a>
+        </nav>
 
-            <div class="sidebar-footer">
-                <p>System Status</p>
-                <strong>Online</strong>
+        <div class="sidebar-footer">
+            <p>System Status</p>
+            <strong id="live-status">🟢 Online</strong>
+            <button id="theme-toggle" class="ghost" style="margin-top: 1rem; width: 100%;">🌓 Dark / Light</button>
+        </div>
+    </aside>
+
+    <!-- ========================================================= -->
+    <!-- MAIN CONTENT                                              -->
+    <!-- ========================================================= -->
+    <main class="main-content">
+
+        <!-- -------------------- HEADER ------------------------- -->
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Restaurant Intelligence Command Center</p>
+                <h1>{{ dashboard.page.title }}</h1>
+                <p>{{ dashboard.page.subtitle }}</p>
             </div>
-        </aside>
+            <div class="header-actions">
+                <button id="import-btn" class="ghost">📄 Import Report</button>
+                <button id="insight-btn" class="primary">✨ Generate Insights</button>
+                <button id="export-pdf-btn" class="ghost">📎 Export PDF</button>
+                <button id="settings-btn" class="ghost">⚙️ Target Labor</button>
+            </div>
+        </header>
 
-        <!-- MAIN CONTENT -->
-        <main class="main-content">
-
-            <!-- HEADER -->
-            <header class="page-header">
-                <div>
-                    <p class="eyebrow">Restaurant Intelligence Command Center</p>
-                    <h1>{{ dashboard.page.title }}</h1>
-                    <p>{{ dashboard.page.subtitle }}</p>
+        <!-- -------------------- METRICS GRID -------------------- -->
+        <section class="metrics-grid">
+            {% for metric in dashboard.summary_metrics %}
+            <div class="metric-card" data-metric="{{ metric.label }}">
+                <div class="metric-topline">
+                    <h3>{{ metric.label }}</h3>
+                    <span class="status {{ metric.status }}">{{ metric.change }}</span>
                 </div>
+                <div class="metric-value">{{ metric.value }}</div>
+                <p>{{ metric.description }}</p>
+            </div>
+            {% endfor %}
+        </section>
 
-                <div class="header-actions">
-                    <button id="import-btn">Import Report</button>
-                    <button class="primary" id="insight-btn">Generate Insights</button>
-                </div>
-            </header>
-
-            <!-- HERO SUMMARY -->
-            <section class="hero-panel">
-                <div>
-                    <p class="eyebrow">Weekly Overview</p>
-                    <h2>Sales, labor, and staffing performance at a glance.</h2>
-                    <p>
-                        This dashboard is powered by structured service-layer data and is prepared
-                        for future database, OCR, forecasting, and AI modules.
-                    </p>
-                </div>
-
-                <div class="hero-status">
-                    <span class="pulse-dot"></span>
-                    Live calculation engine active
-                </div>
-            </section>
-
-            <!-- METRICS -->
-            <section class="metrics-grid">
-                {% for metric in dashboard.summary_metrics %}
-                <div class="metric-card"
-                     data-metric-label="{{ metric.label }}"
-                     data-status="{{ metric.status }}">
-
-                    <div class="metric-topline">
-                        <h3>{{ metric.label }}</h3>
-                        <span class="status {{ metric.status }}">
-                            {{ metric.change }}
-                        </span>
-                    </div>
-
-                    <div class="metric-value">{{ metric.value }}</div>
-                    <p>{{ metric.description }}</p>
-                </div>
-                {% endfor %}
-            </section>
-
-            <!-- CHART + INSIGHTS GRID -->
-            <section class="content-grid">
-
-                <div class="panel large-panel chart-panel">
-                    <div class="panel-header split">
-                        <div>
-                            <h2>Sales vs Labor Trend</h2>
-                            <p>Visual comparison of weekly revenue and labor cost.</p>
-                        </div>
-
-                        <div class="panel-tabs">
-                            <button class="tab active" type="button">Weekly</button>
-                            <button class="tab" type="button">Monthly</button>
-                            <button class="tab" type="button">Forecast</button>
-                        </div>
-                    </div>
-
-                    <div class="chart-container">
-                        <canvas id="salesLaborChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>Operational Insights</h2>
-                        <p>Early intelligence generated from computed data.</p>
-                    </div>
-
-                    <div class="insight-list">
-                        {% for insight in dashboard.insight_cards %}
-                        <div class="insight-card" data-insight="{{ insight.title }}">
-                            <h3>{{ insight.title }}</h3>
-                            <strong>{{ insight.value }}</strong>
-                            <p>{{ insight.details }}</p>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-            </section>
-
-            <!-- WEEKLY TABLE -->
-            <section class="panel">
+        <!-- -------------------- CHART + INSIGHTS ----------------- -->
+        <div class="two-columns">
+            <!-- CHART PANEL -->
+            <div class="panel chart-panel">
                 <div class="panel-header split">
                     <div>
-                        <h2>Weekly Performance Snapshot</h2>
-                        <p>Sales, labor spend, and labor percentage by day.</p>
+                        <h2>Sales vs Labor Trend</h2>
+                        <p>Weekly revenue compared to labor cost</p>
                     </div>
-
-                    <button class="ghost-button" type="button">Export CSV</button>
+                    <div class="panel-tabs">
+                        <button class="tab active" data-view="weekly">Weekly</button>
+                        <button class="tab" data-view="monthly">Monthly</button>
+                        <button class="tab" data-view="forecast">Forecast</button>
+                    </div>
                 </div>
-
-                <div class="table-wrap">
-                    <table id="weekly-table">
-                        <thead>
-                            <tr>
-                                <th>Day</th>
-                                <th>Sales</th>
-                                <th>Labor</th>
-                                <th>Labor %</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {% for row in dashboard.weekly_snapshot %}
-                            <tr data-day="{{ row.day }}">
-                                <td>{{ row.day }}</td>
-                                <td>{{ row.sales }}</td>
-                                <td>{{ row.labor }}</td>
-                                <td>{{ row.labor_percent }}</td>
-                                <td>
-                                    {% if row.labor_percent.replace('%', '')|float <= 25 %}
-                                        <span class="status positive">Efficient</span>
-                                    {% elif row.labor_percent.replace('%', '')|float <= 28 %}
-                                        <span class="status warning">Watch</span>
-                                    {% else %}
-                                        <span class="status danger">High</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="chart-container">
+                    <canvas id="salesLaborChart" width="800" height="400"></canvas>
                 </div>
-            </section>
+            </div>
 
-            <!-- MODULE ROADMAP -->
-            <section class="panel roadmap-panel">
+            <!-- INSIGHTS PANEL (AI recommendations) -->
+            <div class="panel">
                 <div class="panel-header">
-                    <h2>Expansion Modules</h2>
-                    <p>Designed for large-scale feature expansion without breaking the system.</p>
+                    <h2>AI Recommendations</h2>
+                    <p>Actionable intelligence from your data</p>
                 </div>
-
-                <div class="module-grid">
-                    {% for module in dashboard.future_modules %}
-                    <div class="module-card">
-                        <span>Module</span>
-                        <strong>{{ module }}</strong>
+                <div class="insight-list" id="recommendations-list">
+                    {% for rec in dashboard.recommendations %}
+                    <div class="insight-card">
+                        <h3>{{ rec.title }}</h3>
+                        <strong>{{ rec.detail }}</strong>
+                        <p>{{ rec.impact }}</p>
                     </div>
                     {% endfor %}
                 </div>
-            </section>
+            </div>
+        </div>
 
-        </main>
+        <!-- -------------------- LABOR OPTIMIZER + FORECAST ------- -->
+        <div class="two-columns">
+            <!-- LABOR OPTIMIZER -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>📊 Labor Optimizer</h2>
+                    <p>Adjust target labor % to see suggested schedule changes</p>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 1rem;">
+                        Target Labor %:
+                        <input type="range" id="target-labor-slider" min="18" max="35" step="0.5" value="25">
+                        <span id="target-labor-value" style="font-weight: 800; margin-left: 8px;">25%</span>
+                    </label>
+                    <div id="optimizer-results" class="optimizer-output" style="background: var(--bg-surface); border-radius: 16px; padding: 1rem; margin: 1rem 0; min-height: 120px;">
+                        <em class="text-muted">Click "Run Optimization" to see recommendations</em>
+                    </div>
+                    <button id="run-optimizer" class="primary block">Run Optimization</button>
+                </div>
+            </div>
+
+            <!-- FORECAST PREVIEW -->
+            <div class="panel">
+                <div class="panel-header split">
+                    <div>
+                        <h2>🔮 2‑Week Forecast</h2>
+                        <p>Mock ARIMA projection (API ready)</p>
+                    </div>
+                    <button id="refresh-forecast" class="ghost">⟳ Refresh</button>
+                </div>
+                <div id="forecast-table" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    {% for f in dashboard.forecast_preview %}
+                    <div style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-light);">
+                        <strong>{{ f.week }}</strong> — Sales: {{ f.sales }} | Labor: {{ f.labor }} ({{ f.labor_percent }})
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- -------------------- WEEKLY PERFORMANCE TABLE --------- -->
+        <section class="panel">
+            <div class="panel-header split">
+                <div>
+                    <h2>Weekly Performance Snapshot</h2>
+                    <p>Sales, labor, efficiency, weather & events</p>
+                </div>
+                <button id="export-csv-btn" class="ghost">📥 Export CSV</button>
+            </div>
+            <div class="table-wrap">
+                <table id="weekly-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Sales</th>
+                            <th>Labor</th>
+                            <th>Labor %</th>
+                            <th>Hours</th>
+                            <th>Efficiency</th>
+                            <th>Weather</th>
+                            <th>Event</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in dashboard.weekly_snapshot %}
+                        <tr data-day="{{ row.day }}">
+                            <td>{{ row.day }}</td>
+                            <td>{{ row.sales }}</td>
+                            <td>{{ row.labor }}</td>
+                            <td>{{ row.labor_percent }}</td>
+                            <td>{{ row.staff_hours }}</td>
+                            <td>{{ row.efficiency }}</td>
+                            <td>{{ row.weather }}</td>
+                            <td>{{ row.event }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- -------------------- MODULE ROADMAP ------------------- -->
+        <section class="panel roadmap-panel">
+            <div class="panel-header">
+                <h2>🚀 Expansion Modules</h2>
+                <p>Designed for 10k+ lines per module – replace blocks without breaking</p>
+            </div>
+            <div class="module-grid">
+                {% for module in dashboard.future_modules %}
+                <div class="module-card">
+                    <span>Module</span>
+                    <strong>{{ module }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ========================================================= -->
+<!-- MODAL: Target Labor Settings                            -->
+<!-- ========================================================= -->
+<div id="settings-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>🎯 Set Labor Target</h2>
+        <p>Adjust the target labor percentage used for optimization and status badges.</p>
+        <label>
+            Target Labor %:
+            <input type="number" id="modal-target" step="0.5" min="15" max="45" value="25">
+        </label>
+        <div class="modal-actions">
+            <button id="save-target" class="primary">Save</button>
+            <button class="close-modal ghost">Cancel</button>
+        </div>
     </div>
+</div>
 
-    <!-- Backend data exposed safely to frontend JS -->
-    <script>
-        const dashboardData = {{ dashboard | tojson }};
-        console.log("Dashboard data loaded:", dashboardData);
-    </script>
+<!-- ========================================================= -->
+<!-- BACKEND DATA INJECTION (for JavaScript)                  -->
+<!-- ========================================================= -->
+<script>
+    // The full dashboard context from Flask (safe tojson)
+    const dashboardData = {{ dashboard | tojson }};
+    console.log("Dashboard data injected:", dashboardData);
+</script>
 
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<!-- Main Dashboard JS (your enhanced version) -->
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
 </body>
 </html>

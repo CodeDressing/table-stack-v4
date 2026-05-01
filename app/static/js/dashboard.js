@@ -1,143 +1,133 @@
 /* =========================================================
-   TABLE STACK v4 DASHBOARD JS ENGINE
-   Purpose:
-   - Render Chart.js dashboard visuals
-   - Power buttons and frontend interactions
-   - Keep JS organized for future large module upgrades
+   TABLE STACK v4 – ENHANCED DASHBOARD JS ENGINE
+   ---------------------------------------------------------
+   Purpose: Full interactive dashboard with:
+   - Chart rendering (Chart.js)
+   - Labor optimizer (API + UI)
+   - Forecast refresh (mock API call)
+   - CSV / PDF export
+   - Theme toggle (dark/light)
+   - Modal for target labor %
+   - Toast notifications
+   - Placeholder popups for unfinished features
+   - Ready for 10k+ lines (add new modules below)
    ========================================================= */
 
+// ---------------------------------------------------------
+// 1. GLOBALS & STATE
+// ---------------------------------------------------------
+window.TableStack = window.TableStack || {};
 
-/* =========================================================
-   1. APP STATE + SAFETY CHECKS
-   ========================================================= */
+const App = {
+    // Data from backend (injected via template)
+    dashboardData: typeof dashboardData !== 'undefined' ? dashboardData : null,
 
-console.log("Dashboard JS initialized");
+    // UI state
+    currentChart: null,
+    targetLaborPercent: 25,
+    theme: localStorage.getItem('theme') || 'light',
 
-const TableStackDashboard = {
-    data: window.dashboardData || {},
-    charts: {},
-    settings: {
-        laborTargetPercent: 25,
-        currencyLocale: "en-US",
-        currencyCode: "USD"
-    }
+    // API endpoints (relative to Flask)
+    endpoints: {
+        dashboardData: '/api/dashboard/data',
+        forecast: '/api/forecast',
+        optimizeLabor: '/api/optimize-labor'
+    },
+
+    // Toast queue
+    toastTimeout: null
 };
 
-function hasDashboardData() {
-    return Boolean(
-        TableStackDashboard.data &&
-        TableStackDashboard.data.weekly_snapshot &&
-        Array.isArray(TableStackDashboard.data.weekly_snapshot)
-    );
+// ---------------------------------------------------------
+// 2. UTILITIES
+// ---------------------------------------------------------
+function showToast(message, type = 'info') {
+    // Remove existing toast
+    const oldToast = document.querySelector('.toast');
+    if (oldToast) oldToast.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: var(--bg-surface);
+        border-left: 4px solid ${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : '#2563eb'};
+        padding: 12px 20px;
+        border-radius: 60px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        z-index: 1100;
+        font-weight: 500;
+        backdrop-filter: blur(12px);
+        color: var(--text-primary);
+        animation: fadeInUp 0.2s ease;
+    `;
+    document.body.appendChild(toast);
+
+    if (App.toastTimeout) clearTimeout(App.toastTimeout);
+    App.toastTimeout = setTimeout(() => toast.remove(), 3000);
 }
 
-
-/* =========================================================
-   2. DATA HELPERS
-   ========================================================= */
-
-function getWeeklyData() {
-    if (!hasDashboardData()) {
-        console.warn("Dashboard weekly data is missing or invalid.");
-        return [];
-    }
-
-    return TableStackDashboard.data.weekly_snapshot;
-}
-
-function parseCurrency(value) {
-    return Number(String(value).replace(/[$,]/g, "")) || 0;
-}
-
-function parsePercentage(value) {
-    return Number(String(value).replace("%", "")) || 0;
+function showComingSoon(feature, phase = 'Phase 8') {
+    showToast(`✨ ${feature} is coming in ${phase}.`, 'info');
+    console.log(`[Coming Soon] ${feature} (${phase})`);
 }
 
 function formatCurrency(value) {
-    return new Intl.NumberFormat(TableStackDashboard.settings.currencyLocale, {
-        style: "currency",
-        currency: TableStackDashboard.settings.currencyCode,
-        maximumFractionDigits: 0
-    }).format(value);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 }
 
-
-/* =========================================================
-   3. CHART DATA BUILDERS
-   ========================================================= */
-
-function buildSalesLaborChartData() {
-    const weeklyData = getWeeklyData();
-
-    return {
-        labels: weeklyData.map(row => row.day),
-        sales: weeklyData.map(row => parseCurrency(row.sales)),
-        labor: weeklyData.map(row => parseCurrency(row.labor)),
-        laborPercent: weeklyData.map(row => parsePercentage(row.labor_percent))
-    };
+function parseCurrencyString(str) {
+    return parseFloat(str.replace(/[$,]/g, '')) || 0;
 }
 
+// ---------------------------------------------------------
+// 3. CHART RENDERING (Sales vs Labor)
+// ---------------------------------------------------------
+function renderSalesLaborChart(data = null) {
+    const canvas = document.getElementById('salesLaborChart');
+    if (!canvas) return;
 
-/* =========================================================
-   4. CHART RENDERING
-   ========================================================= */
-
-function renderSalesLaborChart() {
-    const canvas = document.getElementById("salesLaborChart");
-
-    if (!canvas) {
-        console.warn("salesLaborChart canvas not found.");
+    const weeklyData = data || (App.dashboardData ? App.dashboardData.weekly_snapshot : null);
+    if (!weeklyData || !weeklyData.length) {
+        console.warn('No weekly data for chart');
         return;
     }
 
-    if (typeof Chart === "undefined") {
-        console.error("Chart.js is not loaded. Check dashboard.html CDN script.");
-        return;
-    }
+    const labels = weeklyData.map(row => row.day);
+    const sales = weeklyData.map(row => parseCurrencyString(row.sales));
+    const labor = weeklyData.map(row => parseCurrencyString(row.labor));
 
-    const chartData = buildSalesLaborChartData();
+    if (App.currentChart) App.currentChart.destroy();
 
-    if (TableStackDashboard.charts.salesLabor) {
-        TableStackDashboard.charts.salesLabor.destroy();
-    }
-
-    TableStackDashboard.charts.salesLabor = new Chart(canvas, {
-        type: "bar",
+    App.currentChart = new Chart(canvas, {
+        type: 'bar',
         data: {
-            labels: chartData.labels,
+            labels: labels,
             datasets: [
                 {
-                    label: "Sales",
-                    data: chartData.sales,
-                    borderWidth: 1,
-                    borderRadius: 10
+                    label: 'Sales',
+                    data: sales,
+                    backgroundColor: 'rgba(37, 99, 235, 0.7)',
+                    borderRadius: 8,
+                    barPercentage: 0.65
                 },
                 {
-                    label: "Labor Cost",
-                    data: chartData.labor,
-                    borderWidth: 1,
-                    borderRadius: 10
+                    label: 'Labor Cost',
+                    data: labor,
+                    backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                    borderRadius: 8,
+                    barPercentage: 0.65
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: "index",
-                intersect: false
-            },
             plugins: {
-                legend: {
-                    position: "top",
-                    labels: {
-                        usePointStyle: true,
-                        boxWidth: 8,
-                        font: {
-                            weight: "bold"
-                        }
-                    }
-                },
+                legend: { position: 'top', labels: { font: { weight: 'bold' } } },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -147,181 +137,318 @@ function renderSalesLaborChart() {
                 }
             },
             scales: {
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        font: {
-                            weight: "bold"
-                        }
-                    }
-                },
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
-                            return formatCurrency(value);
-                        }
+                        callback: function(value) { return formatCurrency(value); }
                     }
                 }
             }
         }
     });
-
-    console.log("Sales/Labor chart rendered:", chartData);
+    console.log('Chart rendered');
 }
 
-
-/* =========================================================
-   5. TABLE ENHANCEMENTS
-   ========================================================= */
-
-function highlightLaborRiskRows() {
-    const rows = document.querySelectorAll("#weekly-table tbody tr");
-
-    rows.forEach(row => {
-        const laborPercentCell = row.children[3];
-
-        if (!laborPercentCell) return;
-
-        const laborPercent = parsePercentage(laborPercentCell.textContent);
-
-        if (laborPercent > 28) {
-            row.classList.add("labor-risk-high");
-        } else if (laborPercent > TableStackDashboard.settings.laborTargetPercent) {
-            row.classList.add("labor-risk-watch");
-        } else {
-            row.classList.add("labor-risk-good");
+// ---------------------------------------------------------
+// 4. FORECAST REFRESH (API call + mock fallback)
+// ---------------------------------------------------------
+async function refreshForecast() {
+    showToast('Fetching latest forecast...', 'info');
+    try {
+        const response = await fetch(`${App.endpoints.forecast}?weeks=2`);
+        if (!response.ok) throw new Error('Forecast API failed');
+        const forecastData = await response.json();
+        // Update forecast table in UI
+        const container = document.getElementById('forecast-table');
+        if (container && forecastData.length) {
+            container.innerHTML = forecastData.map(f => `
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--border-light);">
+                    <strong>${f.week}</strong> — Sales: ${f.sales} | Labor: ${f.labor} (${f.labor_percent})
+                </div>
+            `).join('');
+            showToast('Forecast updated successfully', 'success');
         }
-    });
+    } catch (error) {
+        console.error(error);
+        showToast('Forecast API unavailable – using mock data', 'warning');
+        // Mock fallback
+        const mockForecast = [
+            { week: 'Week +1', sales: '$12,450', labor: '$2,988', labor_percent: '24.0%' },
+            { week: 'Week +2', sales: '$12,800', labor: '$3,072', labor_percent: '24.0%' }
+        ];
+        const container = document.getElementById('forecast-table');
+        if (container) {
+            container.innerHTML = mockForecast.map(f => `
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--border-light);">
+                    <strong>${f.week}</strong> — Sales: ${f.sales} | Labor: ${f.labor} (${f.labor_percent})
+                </div>
+            `).join('');
+        }
+    }
 }
 
-function exportWeeklyTableToCsv() {
-    const rows = getWeeklyData();
+// ---------------------------------------------------------
+// 5. LABOR OPTIMIZER (call backend)
+// ---------------------------------------------------------
+async function runLaborOptimizer() {
+    const target = App.targetLaborPercent;
+    showToast(`Optimizing schedule for ${target}% labor target...`, 'info');
+    try {
+        const response = await fetch(App.endpoints.optimizeLabor, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_labor_percent: target })
+        });
+        if (!response.ok) throw new Error('Optimizer API failed');
+        const data = await response.json();
+        const resultsDiv = document.getElementById('optimizer-results');
+        if (resultsDiv && data.optimized_schedule) {
+            let html = `<strong>📋 Suggested schedule changes to reach ${target}% labor:</strong><ul style="margin-top: 12px;">`;
+            data.optimized_schedule.forEach(s => {
+                html += `<li><strong>${s.day}</strong>: ${s.current_hours}h → ${s.suggested_hours}h (save ${s.labor_reduction})</li>`;
+            });
+            html += `</ul>`;
+            resultsDiv.innerHTML = html;
+            showToast('Optimization complete', 'success');
+        }
+    } catch (error) {
+        console.error(error);
+        showToast('Optimizer API unavailable – using client-side simulation', 'warning');
+        // Fallback mock
+        const resultsDiv = document.getElementById('optimizer-results');
+        if (resultsDiv) {
+            resultsDiv.innerHTML = `<div class="text-muted">⚠️ API not ready – in Phase 9 this will connect to real optimization engine.</div>`;
+        }
+    }
+}
 
-    if (!rows.length) {
-        alert("No weekly data available to export.");
+// ---------------------------------------------------------
+// 6. EXPORT FUNCTIONS
+// ---------------------------------------------------------
+function exportCSV() {
+    if (!App.dashboardData || !App.dashboardData.weekly_snapshot) {
+        showToast('No data to export', 'error');
         return;
     }
-
-    const headers = ["Day", "Sales", "Labor", "Labor Percent"];
-    const csvRows = [headers.join(",")];
-
+    const rows = App.dashboardData.weekly_snapshot;
+    const headers = ['Day', 'Sales', 'Labor', 'Labor %', 'Hours', 'Efficiency', 'Weather', 'Event'];
+    const csvRows = [headers.join(',')];
     rows.forEach(row => {
         csvRows.push([
-            row.day,
-            row.sales,
-            row.labor,
-            row.labor_percent
-        ].join(","));
+            row.day, row.sales, row.labor, row.labor_percent,
+            row.staff_hours, row.efficiency, row.weather, row.event
+        ].join(','));
     });
-
-    const csvContent = csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-
-    const downloadLink = document.createElement("a");
-    downloadLink.href = url;
-    downloadLink.download = "table-stack-weekly-performance.csv";
-    downloadLink.click();
-
+    link.href = url;
+    link.setAttribute('download', 'tablestack_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    showToast('CSV exported successfully', 'success');
 }
 
-
-/* =========================================================
-   6. UI ACTIONS
-   ========================================================= */
-
-function showComingSoonAlert(featureName, phaseLabel) {
-    alert(`${featureName} is planned for ${phaseLabel}.`);
+function exportPDF() {
+    showComingSoon('PDF Export with full dashboard layout', 'Phase 8');
+    // In Phase 8: use html2canvas + jsPDF
 }
 
-function bindHeaderActions() {
-    const importBtn = document.getElementById("import-btn");
-    const insightBtn = document.getElementById("insight-btn");
+// ---------------------------------------------------------
+// 7. THEME TOGGLE (DARK / LIGHT)
+// ---------------------------------------------------------
+function initTheme() {
+    document.documentElement.setAttribute('data-theme', App.theme);
+}
 
-    if (importBtn) {
-        importBtn.addEventListener("click", () => {
-            showComingSoonAlert("Report import with OCR/file upload", "Phase 8");
-        });
+function toggleTheme() {
+    App.theme = App.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', App.theme);
+    localStorage.setItem('theme', App.theme);
+    showToast(`${App.theme === 'dark' ? '🌙 Dark' : '☀️ Light'} mode activated`, 'success');
+}
+
+// ---------------------------------------------------------
+// 8. MODAL HANDLING (Target Labor %)
+// ---------------------------------------------------------
+function initModal() {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+
+    const settingsBtn = document.getElementById('settings-btn');
+    const closeBtn = modal.querySelector('.close');
+    const saveBtn = document.getElementById('save-target');
+    const targetInput = document.getElementById('modal-target');
+    const slider = document.getElementById('target-labor-slider');
+    const targetValueSpan = document.getElementById('target-labor-value');
+
+    // Open modal
+    if (settingsBtn) {
+        settingsBtn.onclick = () => {
+            if (targetInput) targetInput.value = App.targetLaborPercent;
+            modal.style.display = 'flex';
+        };
     }
 
-    if (insightBtn) {
-        insightBtn.addEventListener("click", () => {
-            showComingSoonAlert("AI-powered operational insights", "Phase 9");
+    // Close modal
+    if (closeBtn) closeBtn.onclick = () => modal.style.display = 'none';
+    window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
+    // Save target
+    if (saveBtn && targetInput) {
+        saveBtn.onclick = () => {
+            const newTarget = parseFloat(targetInput.value);
+            if (!isNaN(newTarget) && newTarget >= 15 && newTarget <= 45) {
+                App.targetLaborPercent = newTarget;
+                if (slider) slider.value = newTarget;
+                if (targetValueSpan) targetValueSpan.innerText = newTarget + '%';
+                modal.style.display = 'none';
+                showToast(`Labor target set to ${newTarget}%`, 'success');
+                // Optionally re-fetch dashboard data with new target
+                // refreshDashboardData();
+            } else {
+                showToast('Enter a value between 15 and 45', 'error');
+            }
+        };
+    }
+
+    // Slider realtime
+    if (slider && targetValueSpan) {
+        slider.addEventListener('input', (e) => {
+            App.targetLaborPercent = parseFloat(e.target.value);
+            targetValueSpan.innerText = App.targetLaborPercent + '%';
         });
     }
 }
 
-function bindExportActions() {
-    const exportButtons = document.querySelectorAll(".ghost-button");
-
-    exportButtons.forEach(button => {
-        if (button.textContent.trim().toLowerCase().includes("export")) {
-            button.addEventListener("click", exportWeeklyTableToCsv);
+// ---------------------------------------------------------
+// 9. TABLE ROW HIGHLIGHTING (Labor risk)
+// ---------------------------------------------------------
+function highlightLaborRiskRows() {
+    const rows = document.querySelectorAll('#weekly-table tbody tr');
+    rows.forEach(row => {
+        const laborPercentCell = row.cells[3]; // Labor % column
+        if (laborPercentCell) {
+            const percentText = laborPercentCell.textContent;
+            const value = parseFloat(percentText.replace('%', ''));
+            if (value > 28) row.classList.add('labor-risk-high');
+            else if (value > 25) row.classList.add('labor-risk-watch');
+            else row.classList.add('labor-risk-good');
         }
     });
 }
 
-function bindChartTabs() {
-    const tabs = document.querySelectorAll(".panel-tabs .tab");
+// ---------------------------------------------------------
+// 10. BIND ACTION BUTTONS (with popups)
+// ---------------------------------------------------------
+function bindActionButtons() {
+    // Import Report
+    const importBtn = document.getElementById('import-btn');
+    if (importBtn) importBtn.onclick = () => showComingSoon('OCR / File import with sales extraction', 'Phase 8');
 
+    // Generate Insights (AI)
+    const insightBtn = document.getElementById('insight-btn');
+    if (insightBtn) insightBtn.onclick = () => showComingSoon('AI‑powered deep insights & recommendations', 'Phase 9');
+
+    // Export CSV
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    if (exportCsvBtn) exportCsvBtn.onclick = exportCSV;
+
+    // Export PDF
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
+    if (exportPdfBtn) exportPdfBtn.onclick = exportPDF;
+
+    // Refresh Forecast
+    const refreshForecastBtn = document.getElementById('refresh-forecast');
+    if (refreshForecastBtn) refreshForecastBtn.onclick = refreshForecast;
+
+    // Run Optimizer
+    const runOptimizerBtn = document.getElementById('run-optimizer');
+    if (runOptimizerBtn) runOptimizerBtn.onclick = runLaborOptimizer;
+
+    // Theme Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) themeToggle.onclick = toggleTheme;
+
+    // Chart Tabs (Weekly, Monthly, Forecast) – all coming soon except Weekly
+    const tabs = document.querySelectorAll('.panel-tabs .tab');
     tabs.forEach(tab => {
-        tab.addEventListener("click", () => {
-            tabs.forEach(item => item.classList.remove("active"));
-            tab.classList.add("active");
-
-            const selectedView = tab.textContent.trim();
-
-            if (selectedView !== "Weekly") {
-                showComingSoonAlert(`${selectedView} chart view`, "a future analytics expansion");
+        tab.addEventListener('click', () => {
+            if (tab.textContent.trim() !== 'Weekly') {
+                showComingSoon(`${tab.textContent} chart view`, 'Phase 10');
+            } else {
+                // Already showing weekly – do nothing
             }
         });
     });
-}
 
-
-/* =========================================================
-   7. DASHBOARD DIAGNOSTICS
-   ========================================================= */
-
-function logDashboardSummary() {
-    const weeklyData = getWeeklyData();
-
-    const totalSales = weeklyData.reduce((total, row) => {
-        return total + parseCurrency(row.sales);
-    }, 0);
-
-    const totalLabor = weeklyData.reduce((total, row) => {
-        return total + parseCurrency(row.labor);
-    }, 0);
-
-    const laborPercent = totalSales > 0 ? (totalLabor / totalSales) * 100 : 0;
-
-    console.log("Dashboard diagnostics:", {
-        daysLoaded: weeklyData.length,
-        totalSales,
-        totalLabor,
-        laborPercent: `${laborPercent.toFixed(1)}%`
+    // Sidebar nav links (Sales, Labor, Staffing, Reports, Forecast)
+    const navLinks = document.querySelectorAll('.nav a:not(.active)');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            showComingSoon(`${link.textContent.trim()} module`, 'Phase 8-10');
+        });
     });
 }
 
-
-/* =========================================================
-   8. BOOTSTRAP
-   ========================================================= */
-
-function initializeDashboard() {
-    console.log("Dashboard loaded");
-
-    renderSalesLaborChart();
-    highlightLaborRiskRows();
-    bindHeaderActions();
-    bindExportActions();
-    bindChartTabs();
-    logDashboardSummary();
+// ---------------------------------------------------------
+// 11. REFRESH DASHBOARD DATA (future use)
+// ---------------------------------------------------------
+async function refreshDashboardData() {
+    showToast('Refreshing dashboard data...', 'info');
+    try {
+        const response = await fetch(App.endpoints.dashboardData);
+        if (!response.ok) throw new Error('API failed');
+        const newData = await response.json();
+        App.dashboardData = newData;
+        // Update UI: metrics, table, insights, etc. (simplified for demo)
+        renderSalesLaborChart(newData.weekly_snapshot);
+        showToast('Dashboard refreshed', 'success');
+    } catch (error) {
+        console.error(error);
+        showToast('Could not refresh – using existing data', 'warning');
+    }
 }
 
-document.addEventListener("DOMContentLoaded", initializeDashboard);
+// ---------------------------------------------------------
+// 12. INITIALIZE DASHBOARD
+// ---------------------------------------------------------
+function initializeDashboard() {
+    console.log('🚀 Table Stack v4 Enhanced JS initializing...');
+
+    initTheme();
+    if (App.dashboardData) {
+        renderSalesLaborChart(App.dashboardData.weekly_snapshot);
+        highlightLaborRiskRows();
+    } else {
+        console.warn('No dashboardData found; chart will not render');
+    }
+    initModal();
+    bindActionButtons();
+
+    // Set initial target labor from slider if present
+    const slider = document.getElementById('target-labor-slider');
+    if (slider) App.targetLaborPercent = parseFloat(slider.value);
+
+    showToast('Dashboard ready – intelligence engine online', 'success');
+}
+
+// ---------------------------------------------------------
+// 13. START ON DOM READY
+// ---------------------------------------------------------
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+} else {
+    initializeDashboard();
+}
+
+// ---------------------------------------------------------
+// 14. FUTURE EXPANSION BLOCKS
+// (Add new modules below without breaking existing code)
+// ---------------------------------------------------------
+// Example: Real-time WebSocket listener
+// Example: Drag & drop schedule editor
+// Example: Advanced filtering

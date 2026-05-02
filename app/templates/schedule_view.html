@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Schedule Plans | Table Stack v4</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    <style>
+        /* ── Plan Cards ── */
+        .plan-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .plan-card:hover { transform: translateY(-4px); border-color: var(--blue); box-shadow: var(--shadow-md); }
+        .plan-card.active { border-left: 4px solid var(--blue); background: rgba(37,99,235,0.05); }
+        .plan-name { font-weight: 700; font-size: 1rem; }
+        .plan-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+        /* ── Detail Panel ── */
+        .detail-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border-light); }
+        .detail-label { font-weight: 600; color: var(--text-secondary); }
+        .gap-item, .warn-item { padding: 0.5rem; border-radius: 10px; margin-bottom: 0.5rem; }
+        .gap-item { background: var(--red-bg); color: var(--red); }
+        .warn-item { background: var(--yellow-bg); color: var(--yellow); }
+        .search-box { width: 100%; padding: 0.75rem; border-radius: 40px; border: 1px solid var(--border-medium); background: var(--bg-surface); color: var(--text-primary); margin-bottom: 1rem; }
+
+        /* ── Schedule Grid ── */
+        .schedule-section { margin-top: 2rem; }
+        .schedule-section h2 { margin-bottom: 1rem; font-size: 1.2rem; }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 120px repeat(7, 1fr);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .schedule-grid-header {
+            background: var(--bg-surface);
+            font-weight: 700;
+            font-size: 0.75rem;
+            padding: 0.6rem 0.5rem;
+            text-align: center;
+            border-bottom: 2px solid var(--border-medium);
+            border-right: 1px solid var(--border-light);
+        }
+        .schedule-grid-header:first-child { text-align: left; padding-left: 0.75rem; }
+
+        .schedule-role-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+        }
+        .schedule-cell {
+            padding: 0.4rem 0.5rem;
+            border-right: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            min-height: 52px;
+            vertical-align: top;
+        }
+        .schedule-cell:last-child { border-right: none; }
+
+        .emp-chip {
+            display: inline-block;
+            background: rgba(37,99,235,0.12);
+            color: var(--blue);
+            border-radius: 20px;
+            padding: 0.18rem 0.55rem;
+            font-size: 0.68rem;
+            font-weight: 600;
+            margin: 0.1rem 0.1rem;
+            white-space: nowrap;
+        }
+        .emp-chip.dinner {
+            background: rgba(124,58,237,0.12);
+            color: #7c3aed;
+        }
+        .no-staff {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .shift-divider {
+            grid-column: 1 / -1;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .shift-divider.morning { background: rgba(37,99,235,0.07); color: var(--blue); }
+        .shift-divider.dinner  { background: rgba(124,58,237,0.07); color: #7c3aed; }
+
+        .schedule-loading { text-align: center; padding: 2rem; color: var(--text-muted); }
+        .schedule-empty   { text-align: center; padding: 2rem; color: var(--text-muted); font-style: italic; }
+
+        .week-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+        .view-schedule-btn {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            background: var(--blue);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        .view-schedule-btn:hover { opacity: 0.85; }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">TS</div>
+            <div><h2>Table Stack</h2><p>v4 Intelligence</p></div>
+        </div>
+        <nav class="nav">
+            <a href="/dashboard">📊 Dashboard</a>
+            <a href="/sales">💰 Sales</a>
+            <a href="#" id="nav-labor">⏱️ Labor</a>
+            <a href="/schedule/setup" class="active">👥 Staffing</a>
+            <a href="#" id="nav-reports">📑 Reports</a>
+            <a href="#" id="nav-forecast">🔮 Forecasting</a>
+        </nav>
+        <div class="sidebar-footer">
+            <p>System Status</p>
+            <strong id="live-status">🟢 Online</strong>
+            <button id="theme-toggle" class="ghost" style="margin-top:1rem;width:100%;">🌓 Dark / Light</button>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Staffing Plans Library</p>
+                <h1>Saved Staffing Plans</h1>
+                <p>View, load, and manage all your staffing configurations.</p>
+            </div>
+            <div class="header-actions">
+                <button id="refresh-plans-btn" class="ghost">⟳ Refresh</button>
+                <button class="primary" onclick="window.location.href='/schedule/setup'">➕ New Plan</button>
+            </div>
+        </header>
+
+        <!-- ── Plans Library ── -->
+        <div class="two-columns">
+            <!-- LEFT: Plan List -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>📋 All Plans</h2>
+                    <p>Click a plan to view details</p>
+                </div>
+                <input type="text" id="plan-search" class="search-box" placeholder="🔍 Search by name...">
+                <div id="plans-list" style="display:flex;flex-direction:column;gap:0.75rem;max-height:500px;overflow-y:auto;">
+                    <div class="text-muted">Loading plans...</div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Plan Details + Analysis -->
+            <div class="panel">
+                <div class="panel-header split">
+                    <div>
+                        <h2>📄 Plan Details</h2>
+                        <p id="selected-plan-name">Select a plan</p>
+                    </div>
+                    <div id="detail-actions" style="display:none;">
+                        <button id="export-plan-detail-btn" class="ghost">💾 Export JSON</button>
+                        <button id="copy-to-setup-btn" class="ghost">📋 Copy to Setup</button>
+                        <button id="view-schedule-detail-btn" class="ghost">📅 View Schedule</button>
+                        <button id="delete-plan-btn" class="danger">🗑️ Delete</button>
+                    </div>
+                </div>
+                <div id="plan-detail-content">
+                    <div class="text-muted">No plan selected. Click on any plan from the left panel.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Schedule Grid (shown when a plan is selected) ── -->
+        <div class="schedule-section" id="schedule-grid-section" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                <div>
+                    <h2>📅 Weekly Schedule</h2>
+                    <p class="week-label" id="schedule-week-label"></p>
+                </div>
+                <button class="ghost" id="collapse-schedule-btn">▲ Collapse</button>
+            </div>
+            <div id="schedule-grid-container">
+                <div class="schedule-loading">Select a plan to view the schedule.</div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- ===== DELETE MODAL ===== -->
+<div id="delete-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>🗑️ Delete Plan</h2>
+        <p>Are you sure you want to delete "<span id="delete-plan-name"></span>"? This cannot be undone.</p>
+        <div class="modal-actions">
+            <button id="confirm-delete-btn" class="danger">Delete</button>
+            <button id="cancel-delete-btn" class="ghost">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+    const API_BASE = '/schedule/api';
+    let currentPlans = [];
+    let selectedPlanId = null;
+    let scheduleCollapsed = false;
+
+    // ── Toast helper ──
+    function showToastMsg(message, type = 'info') {
+        if (typeof showToast === 'function') showToast(message, type);
+        else console.log(`[${type}] ${message}`);
+    }
+
+    // ── HTML escape ──
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    // ============================================================
+    // PLANS LIST
+    // ============================================================
+    async function loadPlans() {
+        const container = document.getElementById('plans-list');
+        container.innerHTML = '<div class="text-muted">Loading...</div>';
+        try {
+            const res = await fetch(`${API_BASE}/plans`);
+            if (!res.ok) throw new Error('Failed');
+            currentPlans = await res.json();
+            renderPlanList(currentPlans);
+        } catch (e) {
+            container.innerHTML = '<div class="text-muted">Error loading plans.</div>';
+            showToastMsg('Failed to load plans', 'error');
+        }
+    }
+
+    function renderPlanList(plans) {
+        const container = document.getElementById('plans-list');
+        const searchTerm = document.getElementById('plan-search').value.toLowerCase();
+        const filtered = plans.filter(p => (p.name || '').toLowerCase().includes(searchTerm));
+        if (!filtered.length) {
+            container.innerHTML = filtered.length === 0 && plans.length > 0
+                ? '<div class="text-muted">No matching plans.</div>'
+                : '<div class="text-muted">No saved plans yet. Create one in Staffing Setup.</div>';
+            return;
+        }
+        container.innerHTML = filtered.map(plan => `
+            <div class="plan-card" data-plan-id="${plan.id}" data-plan-name="${escapeHtml(plan.name)}">
+                <div class="plan-name">${escapeHtml(plan.name)}</div>
+                <div class="plan-meta">
+                    ${plan.week_start ? `Week of ${plan.week_start}<br>` : ''}
+                    ${plan.is_active ? '⭐ Active' : ''}
+                </div>
+            </div>
+        `).join('');
+        document.querySelectorAll('.plan-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = parseInt(card.dataset.planId);
+                document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                selectPlan(id);
+            });
+        });
+    }
+
+    // ============================================================
+    // PLAN DETAILS
+    // ============================================================
+    async function selectPlan(planId) {
+        selectedPlanId = planId;
+        const detailDiv = document.getElementById('plan-detail-content');
+        detailDiv.innerHTML = '<div class="text-muted">Loading...</div>';
+
+        try {
+            const res = await fetch(`${API_BASE}/plans/${planId}`);
+            if (!res.ok) throw new Error('Failed');
+            const plan = await res.json();
+
+            document.getElementById('selected-plan-name').innerHTML =
+                `<strong>${escapeHtml(plan.name)}</strong> ${plan.is_active ? '<span class="status positive">Active</span>' : ''}`;
+            document.getElementById('detail-actions').style.display = 'flex';
+
+            let analysisHtml = '';
+            if (plan.analysis) {
+                const a = plan.analysis;
+                analysisHtml = `
+                    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem;">
+                        <div class="metric-card"><div class="metric-value">$${a.estimated_labor}</div><p>Est. Weekly Labor</p></div>
+                        <div class="metric-card"><div class="metric-value">${a.summary.total_gaps}</div><p>Gaps</p></div>
+                        <div class="metric-card"><div class="metric-value">${a.summary.total_warnings}</div><p>Warnings</p></div>
+                    </div>
+                    <h3>Coverage Issues</h3>
+                `;
+                if (a.gaps && a.gaps.length)
+                    a.gaps.forEach(g => analysisHtml += `<div class="gap-item">⚠️ ${escapeHtml([g.me](https://g.me)ssage)}</div>`);
+                else analysisHtml += `<div class="good-message">✅ No gaps</div>`;
+
+                analysisHtml += `<h3>Warnings</h3>`;
+                if (a.warnings && a.warnings.length)
+                    a.warnings.forEach(w => analysisHtml += `<div class="warn-item">⚡ ${escapeHtml([w.me](https://w.me)ssage)}</div>`);
+                else analysisHtml += `<div class="good-message">✅ No warnings</div>`;
+            } else {
+                analysisHtml = `<div class="text-muted">Analysis not available.</div>`;
+            }
+
+            detailDiv.innerHTML = `
+                <div class="detail-row"><span class="detail-label">Week:</span> ${plan.week_start || '—'}</div>
+                <div class="detail-row"><span class="detail-label">Notes:</span> ${escapeHtml(plan.notes) || '—'}</div>
+                ${analysisHtml}
+            `;
+
+            // Auto-load the schedule grid
+            loadScheduleGrid(planId, plan.week_start);
+
+        } catch (e) {
+            detailDiv.innerHTML = '<div class="text-muted">Error loading plan details.</div>';
+            showToastMsg('Failed to load plan details', 'error');
+        }
+    }
+
+    // ============================================================
+    // SCHEDULE GRID — employee names per shift per day
+    // ============================================================
+    async function loadScheduleGrid(planId, weekStart) {
+        const section = document.getElementById('schedule-grid-section');
+        const container = document.getElementById('schedule-grid-container');
+        const weekLabel = document.getElementById('schedule-week-label');
+
+        section.style.display = 'block';
+        container.innerHTML = '<div class="schedule-loading">⏳ Building schedule...</div>';
+        weekLabel.textContent = weekStart ? `Week of ${weekStart}` : '';
+
+        try {
+            const res = await fetch(`${API_BASE}/schedule/${planId}`);
+            if (!res.ok) throw new Error('Failed');
+            const data = await res.json();
+            renderScheduleGrid(data);
+        } catch (e) {
+            container.innerHTML = '<div class="schedule-empty">Could not load schedule. Make sure the backend is running.</div>';
+        }
+    }
+
+    function renderScheduleGrid(data) {
+        const { schedule, days, shifts, roles } = data;
+        const container = document.getElementById('schedule-grid-container');
+
+        // Filter roles that have at least one assignment anywhere
+        const activeRoles = roles.filter(role =>
+            days.some(day =>
+                shifts.some(shift => (schedule[day]?.[shift]?.[role] || []).length > 0)
+            )
+        );
+
+        if (!activeRoles.length) {
+            container.innerHTML = '<div class="schedule-empty">No employees assigned. Check availability settings and staffing numbers.</div>';
+            return;
+        }
+
+        let html = '';
+
+        shifts.forEach((shift, shiftIdx) => {
+            const shiftClass = shift.toLowerCase().includes('morning') ? 'morning' : 'dinner';
+            const shiftIcon = shiftClass === 'morning' ? '☀️' : '🌙';
+
+            // Shift header row spanning all columns
+            html += `<div class="schedule-grid" style="margin-bottom:1.5rem;">`;
+
+            // Day headers
+            html += `<div class="schedule-grid-header">${shiftIcon} ${shift}</div>`;
+            days.forEach(day => {
+                html += `<div class="schedule-grid-header">${day.substring(0,3)}</div>`;
+            });
+
+            // One row per role
+            activeRoles.forEach(role => {
+                const hasAnything = days.some(day => (schedule[day]?.[shift]?.[role] || []).length > 0);
+                if (!hasAnything) return;
+
+                html += `<div class="schedule-role-label">${role}</div>`;
+                days.forEach(day => {
+                    const assigned = schedule[day]?.[shift]?.[role] || [];
+                    html += `<div class="schedule-cell">`;
+                    if (assigned.length) {
+                        assigned.forEach(emp => {
+                            html += `<span class="emp-chip ${shiftClass}">${escapeHtml(emp.name)}</span>`;
+                        });
+                    } else {
+                        html += `<span class="no-staff">—</span>`;
+                    }
+                    html += `</div>`;
+                });
+            });
+
+            html += `</div>`; // end grid
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ============================================================
+    // EXPORT
+    // ============================================================
+    async function exportPlan(planId) {
+        try {
+            const res = await fetch(`${API_BASE}/plans/${planId}`);
+            if (!res.ok) throw new Error();
+            const plan = await res.json();
+            const blob = new Blob([JSON.stringify(plan.plan_data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `staffing_plan_${(plan.name || 'export').replace(/[^a-z0-9]/gi, '_')}.json`;
+            [document.body.app](https://document.body.app)endChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToastMsg('Plan exported', 'success');
+        } catch (e) {
+            showToastMsg('Export failed', 'error');
+        }
+    }
+
+    // ============================================================
+    // DELETE
+    // ============================================================
+    let planToDelete = null;
+    const deleteModal = document.getElementById('delete-modal');
+
+    function showDeleteConfirm(planId, planName) {
+        planToDelete = planId;
+        document.getElementById('delete-plan-name').innerText = planName;
+        deleteModal.style.display = 'flex';
+    }
+
+    async function confirmDelete() {
+        if (!planToDelete) return;
+        try {
+            const res = await fetch(`${API_BASE}/plans/${planToDelete}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error();
+            showToastMsg('Plan deleted', 'success');
+            deleteModal.style.display = 'none';
+            document.getElementById('plan-detail-content').innerHTML = '<div class="text-muted">Select a plan</div>';
+            document.getElementById('detail-actions').style.display = 'none';
+            document.getElementById('selected-plan-name').innerHTML = 'Select a plan';
+            document.getElementById('schedule-grid-section').style.display = 'none';
+            selectedPlanId = null;
+            loadPlans();
+        } catch (e) {
+            showToastMsg('Delete failed', 'error');
+        }
+        planToDelete = null;
+    }
+
+    // ============================================================
+    // BIND ALL ACTIONS
+    // ============================================================
+    function bindActions() {
+        document.getElementById('refresh-plans-btn').addEventListener('click', loadPlans);
+
+        document.getElementById('export-plan-detail-btn')?.addEventListener('click', () => {
+            if (selectedPlanId) exportPlan(selectedPlanId);
+        });
+        document.getElementById('copy-to-setup-btn')?.addEventListener('click', () => {
+            if (selectedPlanId) window.location.href = `/schedule/setup?copy_plan=${selectedPlanId}`;
+        });
+        document.getElementById('view-schedule-detail-btn')?.addEventListener('click', () => {
+            if (selectedPlanId) {
+                const plan = currentPlans.find(p => p.id === selectedPlanId);
+                loadScheduleGrid(selectedPlanId, plan?.week_start || '');
+                document.getElementById('schedule-grid-section').scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+        document.getElementById('delete-plan-btn')?.addEventListener('click', () => {
+            if (selectedPlanId) {
+                const name = document.querySelector('.plan-card.active')?.dataset.planName || 'this plan';
+                showDeleteConfirm(selectedPlanId, name);
+            }
+        });
+        document.getElementById('collapse-schedule-btn')?.addEventListener('click', () => {
+            scheduleCollapsed = !scheduleCollapsed;
+            const grid = document.getElementById('schedule-grid-container');
+            const btn = document.getElementById('collapse-schedule-btn');
+            grid.style.display = scheduleCollapsed ? 'none' : 'block';
+            btn.textContent = scheduleCollapsed ? '▼ Expand' : '▲ Collapse';
+        });
+
+        // Modal
+        const closeModal = () => deleteModal.style.display = 'none';
+        deleteModal.querySelector('.close').onclick = closeModal;
+        document.getElementById('cancel-delete-btn').onclick = closeModal;
+        document.getElementById('confirm-delete-btn').onclick = confirmDelete;
+        window.onclick = e => { if (e.target === deleteModal) deleteModal.style.display = 'none'; };
+
+        // Search
+        document.getElementById('plan-search').addEventListener('input', () => renderPlanList(currentPlans));
+    }
+
+    // ============================================================
+    // THEME
+    // ============================================================
+    function initTheme() {
+        const saved = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+        document.getElementById('theme-toggle').onclick = () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        };
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        initTheme();
+        loadPlans();
+        bindActions();
+    });
+</script>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

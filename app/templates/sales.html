@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sales Intelligence | Table Stack v4</title>
+
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Main Dashboard CSS (reuse same styles) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+<div class="app-shell">
+
+    <!-- ========================================================= -->
+    <!-- SIDEBAR (same as dashboard, highlight Sales)              -->
+    <!-- ========================================================= -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">TS</div>
+            <div>
+                <h2>Table Stack</h2>
+                <p>v4 Intelligence</p>
+            </div>
+        </div>
+        <nav class="nav">
+            <a href="/dashboard">📊 Dashboard</a>
+            <a href="/sales" class="active">💰 Sales</a>
+            <a href="#" id="nav-labor">⏱️ Labor</a>
+            <a href="/schedule/setup" id="nav-staffing">👥 Staffing</a>
+            <a href="#" id="nav-reports">📑 Reports</a>
+            <a href="#" id="nav-forecast">🔮 Forecasting</a>
+        </nav>
+        <div class="sidebar-footer">
+            <p>System Status</p>
+            <strong id="live-status">🟢 Online</strong>
+            <button id="theme-toggle" class="ghost" style="margin-top: 1rem; width: 100%;">🌓 Dark / Light</button>
+        </div>
+    </aside>
+
+    <!-- ========================================================= -->
+    <!-- MAIN CONTENT – SALES MODULE                              -->
+    <!-- ========================================================= -->
+    <main class="main-content">
+
+        <!-- -------------------- HEADER ------------------------- -->
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Sales Intelligence Center</p>
+                <h1>Sales Performance Analytics</h1>
+                <p>Track revenue, product performance, and sales trends.</p>
+            </div>
+            <div class="header-actions">
+                <button id="import-sales-btn" class="ghost">📄 Import Sales Report</button>
+                <button id="export-sales-csv-btn" class="ghost">📥 Export CSV</button>
+                <button id="export-sales-pdf-btn" class="ghost">📎 Export PDF</button>
+            </div>
+        </header>
+
+        <!-- -------------------- FILE UPLOAD STATUS (Phase 8) ----------------- -->
+        <div id="upload-status-area" style="display: none; margin-bottom: 1.5rem;">
+            <div class="panel" style="background: var(--bg-card); border-left: 4px solid var(--blue);">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <strong>📄 Sales Import Status:</strong>
+                        <span id="upload-status-message">Processing...</span>
+                    </div>
+                    <div id="upload-progress-container" style="width: 200px; background: var(--border-light); border-radius: 40px; overflow: hidden;">
+                        <div id="upload-progress-bar" style="width: 0%; height: 8px; background: var(--blue); transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- -------------------- METRICS GRID (Sales Specific) ----------------- -->
+        <section class="metrics-grid">
+            <div class="metric-card" data-metric="total-sales">
+                <div class="metric-topline">
+                    <h3>Total Sales</h3>
+                    <span class="status neutral">This week</span>
+                </div>
+                <div class="metric-value" id="total-sales-value">$12,450</div>
+                <p>Gross revenue</p>
+            </div>
+            <div class="metric-card" data-metric="cogs">
+                <div class="metric-topline">
+                    <h3>COGS</h3>
+                    <span class="status neutral">Estimated</span>
+                </div>
+                <div class="metric-value" id="cogs-value">$4,357</div>
+                <p>Cost of goods sold (35% avg)</p>
+            </div>
+            <div class="metric-card" data-metric="gross-profit">
+                <div class="metric-topline">
+                    <h3>Gross Profit</h3>
+                    <span class="status positive">+12% vs last week</span>
+                </div>
+                <div class="metric-value" id="gross-profit-value">$8,093</div>
+                <p>Total sales - COGS</p>
+            </div>
+            <div class="metric-card" data-metric="avg-order-value">
+                <div class="metric-topline">
+                    <h3>Avg. Order Value</h3>
+                    <span class="status neutral">$42.50</span>
+                </div>
+                <div class="metric-value" id="avg-order-value">$42.50</div>
+                <p>Per transaction average</p>
+            </div>
+            <div class="metric-card" data-metric="top-product">
+                <div class="metric-topline">
+                    <h3>Top Product</h3>
+                    <span class="status positive">↑ 18%</span>
+                </div>
+                <div class="metric-value" id="top-product-value">Grilled Salmon</div>
+                <p>Best seller this week</p>
+            </div>
+        </section>
+
+        <!-- -------------------- SALES TREND CHART ----------------- -->
+        <div class="panel chart-panel">
+            <div class="panel-header split">
+                <div>
+                    <h2>Sales Trend</h2>
+                    <p>Daily sales for current week</p>
+                </div>
+                <div class="panel-tabs">
+                    <button class="tab active" data-view="daily">Daily</button>
+                    <button class="tab" data-view="weekly">Weekly</button>
+                    <button class="tab" data-view="monthly">Monthly</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="salesTrendChart" width="800" height="400"></canvas>
+            </div>
+        </div>
+
+        <!-- -------------------- PRODUCT PERFORMANCE TABLE ----------------- -->
+        <section class="panel">
+            <div class="panel-header split">
+                <div>
+                    <h2>Product Performance</h2>
+                    <p>Top selling items this week</p>
+                </div>
+                <button id="export-products-csv-btn" class="ghost">📥 Export Products CSV</button>
+            </div>
+            <div class="table-wrap">
+                <table id="products-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Units Sold</th>
+                            <th>Revenue</th>
+                            <th>COGS</th>
+                            <th>Profit</th>
+                            <th>Margin %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-table-body">
+                        <!-- Data injected via JS from backend or mock -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- -------------------- SALES FORECAST PREVIEW ----------------- -->
+        <div class="two-columns">
+            <div class="panel">
+                <div class="panel-header split">
+                    <div>
+                        <h2>🔮 Sales Forecast</h2>
+                        <p>Next 2 weeks projection</p>
+                    </div>
+                    <button id="refresh-sales-forecast" class="ghost">⟳ Refresh</button>
+                </div>
+                <div id="sales-forecast-table" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- Loaded from API -->
+                    <div class="text-muted">Loading forecast...</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>📊 Sales Insights</h2>
+                    <p>AI‑generated recommendations</p>
+                </div>
+                <div class="insight-list" id="sales-insights">
+                    <div class="insight-card">
+                        <h3>Peak Hour Analysis</h3>
+                        <strong>6:00 PM - 8:00 PM drives 32% of daily sales</strong>
+                        <p>Increase staffing and run promotions during these hours.</p>
+                    </div>
+                    <div class="insight-card">
+                        <h3>Upsell Opportunity</h3>
+                        <strong>Appetizer attachment rate only 18%</strong>
+                        <p>Train staff to suggest starters – potential +$2,100 weekly.</p>
+                    </div>
+                    <div class="insight-card">
+                        <h3>Weather Impact</h3>
+                        <strong>Rainy days reduce sales by 22%</strong>
+                        <p>Adjust inventory and labor on forecasted rainy days.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- -------------------- MODULE ROADMAP ----------------- -->
+        <section class="panel roadmap-panel">
+            <div class="panel-header">
+                <h2>🚀 Upcoming Sales Features</h2>
+                <p>Phase 8+ enhancements</p>
+            </div>
+            <div class="module-grid">
+                <div class="module-card"><span>Module</span><strong>POS Integration (Phase 9)</strong></div>
+                <div class="module-card"><span>Module</span><strong>Real‑time Inventory Sync (Phase 10)</strong></div>
+                <div class="module-card"><span>Module</span><strong>Dynamic Pricing Engine (Phase 11)</strong></div>
+                <div class="module-card"><span>Module</span><strong>Customer Lifetime Value (Phase 12)</strong></div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ========================================================= -->
+<!-- MODAL: File Upload for Sales Reports                     -->
+<!-- ========================================================= -->
+<div id="upload-sales-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-upload">&times;</span>
+        <h2>📄 Import Sales Report</h2>
+        <p>Upload CSV, Excel, or PDF sales report. System will extract revenue, product data, and COGS.</p>
+        <div style="margin: 1rem 0;">
+            <input type="file" id="upload-sales-file-input" accept=".csv,.xlsx,.xls,.pdf" style="width: 100%; padding: 8px;">
+        </div>
+        <div id="upload-preview" style="font-size: 0.85rem; color: var(--text-muted);"></div>
+        <div class="modal-actions">
+            <button id="confirm-sales-upload-btn" class="primary">Upload & Process</button>
+            <button id="cancel-sales-upload-btn" class="ghost">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- BACKEND DATA INJECTION                                   -->
+<!-- ========================================================= -->
+<script>
+    // Mock sales data (will be replaced by real endpoint)
+    const salesData = {
+        daily_sales: [1250, 1420, 1675, 1980, 2850, 2375, 900],
+        days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        products: [
+            { name: "Grilled Salmon", category: "Entree", units: 45, revenue: 1125, cogs: 450, profit: 675, margin: 60 },
+            { name: "Ribeye Steak", category: "Entree", units: 38, revenue: 1520, cogs: 760, profit: 760, margin: 50 },
+            { name: "Caesar Salad", category: "Appetizer", units: 62, revenue: 496, cogs: 124, profit: 372, margin: 75 },
+            { name: "Craft Beer", category: "Beverage", units: 120, revenue: 720, cogs: 240, profit: 480, margin: 66.7 }
+        ]
+    };
+</script>
+
+<!-- Sales Module JS (separate or reuse dashboard.js with sales extension) -->
+<script src="{{ url_for('static', filename='js/sales.js') }}"></script>
+
+</body>
+</html>

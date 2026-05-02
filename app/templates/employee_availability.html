@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Employee Availability | Table Stack v4</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    <style>
+        .employee-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+        .employee-card:hover { border-color: var(--blue); box-shadow: var(--shadow-sm); }
+
+        .employee-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .employee-card-header h3 { margin: 0; font-size: 1rem; }
+        .employee-role-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            background: rgba(37,99,235,0.1);
+            color: var(--blue);
+            margin-left: 0.5rem;
+        }
+
+        /* Availability grid */
+        .availability-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+            margin: 0.75rem 0;
+        }
+        .avail-day { display: flex; flex-direction: column; gap: 0.25rem; }
+        .avail-day label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .avail-select {
+            width: 100%;
+            padding: 4px 6px;
+            border-radius: 8px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-size: 0.72rem;
+            text-align: center;
+        }
+        .avail-select.is-custom { border-color: var(--blue); background: rgba(37,99,235,0.06); }
+        .avail-select.is-off    { color: var(--text-muted); }
+
+        /* Custom time window display */
+        .custom-times-row {
+            margin-top: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(37,99,235,0.05);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(37,99,235,0.15);
+            font-size: 0.72rem;
+        }
+        .custom-times-row strong { color: var(--blue); }
+        .custom-time-entry { display: inline-block; margin-right: 0.75rem; color: var(--text-secondary); }
+
+        /* Time off section */
+        .timeoff-section { margin-top: 0.75rem; }
+        .timeoff-section h4 { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.4rem; }
+        .timeoff-item {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.4rem;
+            align-items: center;
+        }
+        .timeoff-item input {
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-size: 0.78rem;
+        }
+
+        /* Pref notes */
+        .pref-section { margin-top: 0.75rem; }
+        .pref-section h4 { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.4rem; }
+        .pref-section textarea {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            padding: 6px 10px;
+            font-size: 0.78rem;
+            resize: vertical;
+        }
+
+        /* Save feedback */
+        .save-status {
+            font-size: 0.72rem;
+            margin-left: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .save-status.show { opacity: 1; }
+        .save-status.ok   { color: var(--green, #16a34a); }
+        .save-status.err  { color: var(--red, #dc2626); }
+
+        .hours-badge {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">TS</div>
+            <div><h2>Table Stack</h2><p>v4 Intelligence</p></div>
+        </div>
+        <nav class="nav">
+            <a href="/dashboard">📊 Dashboard</a>
+            <a href="/sales">💰 Sales</a>
+            <a href="#">⏱️ Labor</a>
+            <a href="/schedule/setup">👥 Staffing</a>
+            <a href="/schedule/employees" class="active">👤 Employee Availability</a>
+            <a href="#">📑 Reports</a>
+            <a href="#">🔮 Forecasting</a>
+        </nav>
+        <div class="sidebar-footer">
+            <p>System Status</p>
+            <strong>🟢 Online</strong>
+            <button id="theme-toggle" class="ghost" style="margin-top:1rem;width:100%;">🌓 Dark / Light</button>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Staffing</p>
+                <h1>Employee Availability & Preferences</h1>
+                <p>Set availability, time off, and shift preferences for each employee.</p>
+            </div>
+        </header>
+
+        <div id="employees-list">
+            {% for emp in employees %}
+            <div class="employee-card" data-employee-id="{{ emp.id }}">
+
+                <!-- Card Header -->
+                <div class="employee-card-header">
+                    <div>
+                        <h3>
+                            {{ emp.name }}
+                            <span class="employee-role-badge">{{ emp.role }}</span>
+                            <span class="hours-badge">
+                                {% if emp.weekly_hours_target and emp.weekly_hours_target > 0 %}
+                                    {{ emp.weekly_hours_target }}h/wk
+                                {% else %}
+                                    No hours set
+                                {% endif %}
+                            </span>
+                        </h3>
+                    </div>
+                    <div style="display:flex;align-items:center;">
+                        <span class="save-status" id="save-status-{{ emp.id }}"></span>
+                        <button class="ghost small save-employee" data-id="{{ emp.id }}">Save</button>
+                    </div>
+                </div>
+
+                <!-- Availability Grid -->
+                <div class="availability-grid">
+                    {% for day in days %}
+                    <div class="avail-day">
+                        <label>{{ day[:3] }}</label>
+                        <select
+                            name="avail[{{ emp.id }}][{{ day }}]"
+                            class="avail-select"
+                            data-day="{{ day }}"
+                            data-emp="{{ emp.id }}">
+                            {% set avail = emp.availability.get(day, 'Off') %}
+                            <option {% if avail == 'Both'   %}selected{% endif %}>Both</option>
+                            <option {% if avail == 'Morning'%}selected{% endif %}>Morning</option>
+                            <option {% if avail == 'Dinner' %}selected{% endif %}>Dinner</option>
+                            <option {% if avail == 'Custom' %}selected{% endif %}>Custom</option>
+                            <option {% if avail == 'Off'    %}selected{% endif %}>Off</option>
+                        </select>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Custom Time Windows (read-only display from employees.json) -->
+                {% if emp.shift_windows %}
+                <div class="custom-times-row">
+                    <strong>⏱ Custom Time Windows:</strong>
+                    {% for day, window in emp.shift_windows.items() %}
+                    <span class="custom-time-entry">
+                        {{ day[:3] }}: {{ window.start }}–{{ window.end }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Time Off -->
+                <div class="timeoff-section">
+                    <h4>Time Off / Unavailable Dates</h4>
+                    <div class="timeoff-list" data-employee="{{ emp.id }}">
+                        {% for date in emp.unavailable_dates %}
+                        <div class="timeoff-item">
+                            <input type="date" value="{{ date }}">
+                            <button class="small remove-timeoff">✖</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button class="ghost small add-timeoff" data-employee="{{ emp.id }}">+ Add Time Off</button>
+                </div>
+
+                <!-- Preferred Shift Notes -->
+                <div class="pref-section">
+                    <h4>Preferred Shift Notes</h4>
+                    <textarea
+                        class="pref-notes"
+                        data-employee="{{ emp.id }}"
+                        rows="2">{{ emp.preference }}</textarea>
+                </div>
+
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+    // ── Theme ──
+    function initTheme() {
+        const saved = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            toggle.onclick = () => {
+                const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            };
+        }
+    }
+    initTheme();
+
+    // ── Style avail selects on load ──
+    function styleSelects() {
+        document.querySelectorAll('.avail-select').forEach(sel => {
+            sel.classList.remove('is-custom', 'is-off');
+            if (sel.value === 'Custom') sel.classList.add('is-custom');
+            if (sel.value === 'Off')    sel.classList.add('is-off');
+            sel.onchange = () => {
+                sel.classList.remove('is-custom', 'is-off');
+                if (sel.value === 'Custom') sel.classList.add('is-custom');
+                if (sel.value === 'Off')    sel.classList.add('is-off');
+            };
+        });
+    }
+    styleSelects();
+
+    // ── Save employee ──
+    document.querySelectorAll('.save-employee').forEach(btn => {
+        btn.onclick = async () => {
+            const empId    = btn.dataset.id;
+            const card     = btn.closest('.employee-card');
+            const statusEl = document.getElementById(`save-status-${empId}`);
+
+            // Build availability map
+            const avail = {};
+            card.querySelectorAll('.avail-select').forEach(sel => {
+                const day = sel.dataset.day;
+                if (day) avail[day] = sel.value;
+            });
+
+            // Collect time off dates
+            const timeoff = Array.from(
+                card.querySelectorAll('.timeoff-item input[type="date"]')
+            ).map(inp => inp.value).filter(v => v);
+
+            // Preference notes
+            const preference = card.querySelector('.pref-notes')?.value || '';
+
+            try {
+                const res = await fetch(`/schedule/api/employee/${empId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        availability:     avail,
+                        unavailable_dates: timeoff,
+                        preference:        preference,
+                    }),
+                });
+                if (res.ok) {
+                    statusEl.textContent = '✔ Saved';
+                    statusEl.className = 'save-status ok show';
+                } else {
+                    statusEl.textContent = '✖ Error';
+                    statusEl.className = 'save-status err show';
+                }
+            } catch (e) {
+                statusEl.textContent = '✖ Network error';
+                statusEl.className = 'save-status err show';
+            }
+
+            // Fade out status after 2.5s
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 2500);
+        };
+    });
+
+    // ── Add time off ──
+    document.querySelectorAll('.add-timeoff').forEach(btn => {
+        btn.onclick = () => {
+            const empId    = btn.dataset.employee;
+            const container = document.querySelector(`.timeoff-list[data-employee="${empId}"]`);
+            const div      = document.createElement('div');
+            div.className  = 'timeoff-item';
+            div.innerHTML  = `<input type="date"><button class="small remove-timeoff">✖</button>`;
+            div.querySelector('.remove-timeoff').onclick = () => div.remove();
+            [container.app](https://container.app)endChild(div);
+        };
+    });
+
+    // ── Remove time off (delegated for existing items) ──
+    document.querySelectorAll('.remove-timeoff').forEach(btn => {
+        btn.onclick = () => btn.closest('.timeoff-item').remove();
+    });
+</script>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

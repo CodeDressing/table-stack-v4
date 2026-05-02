@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Schedule Setup | Table Stack v4</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    <style>
+        .day-box {
+            background: var(--bg-card);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            transition: var(--transition);
+        }
+        .day-box:hover { border-color: var(--blue); box-shadow: var(--shadow-sm); }
+        .shift-section {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+        }
+        .role-input-group { display: flex; flex-direction: column; gap: 0.25rem; }
+        .role-input-group label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        .role-input-group input {
+            width: 70px;
+            padding: 6px 8px;
+            border-radius: 10px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-weight: 600;
+            text-align: center;
+        }
+        .analysis-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border-left: 4px solid var(--blue);
+        }
+        .week-selector {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .week-selector label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Preview panel ── */
+        .preview-section { margin-top: 2rem; }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 110px repeat(7, 1fr);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            font-size: 0.72rem;
+        }
+        .preview-header {
+            background: var(--bg-surface);
+            font-weight: 700;
+            padding: 0.5rem 0.4rem;
+            text-align: center;
+            border-bottom: 2px solid var(--border-medium);
+            border-right: 1px solid var(--border-light);
+        }
+        .preview-header:first-child { text-align: left; padding-left: 0.75rem; }
+        .preview-role-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 0.45rem 0.75rem;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+        }
+        .preview-cell {
+            padding: 0.35rem 0.4rem;
+            border-right: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            min-height: 48px;
+        }
+        .emp-chip {
+            display: inline-block;
+            border-radius: 20px;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin: 0.1rem;
+            white-space: nowrap;
+        }
+        .emp-chip.morning { background: rgba(37,99,235,0.12); color: var(--blue); }
+        .emp-chip.dinner  { background: rgba(124,58,237,0.12); color: #7c3aed; }
+        .no-staff { font-size: 0.62rem; color: var(--text-muted); font-style: italic; }
+        .shift-label-row {
+            grid-column: 1 / -1;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .shift-label-row.morning { background: rgba(37,99,235,0.07); color: var(--blue); }
+        .shift-label-row.dinner  { background: rgba(124,58,237,0.07); color: #7c3aed; }
+        .preview-loading { padding: 1.5rem; text-align: center; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">TS</div>
+            <div><h2>Table Stack</h2><p>v4 Intelligence</p></div>
+        </div>
+        <nav class="nav">
+            <a href="/dashboard">📊 Dashboard</a>
+            <a href="/sales">💰 Sales</a>
+            <a href="#" id="nav-labor">⏱️ Labor</a>
+            <a href="/schedule/setup" class="active">👥 Staffing</a>
+            <a href="/schedule/employees">👤 Employee Availability</a>
+            <a href="#" id="nav-reports">📑 Reports</a>
+            <a href="#" id="nav-forecast">🔮 Forecasting</a>
+        </nav>
+        <div class="sidebar-footer">
+            <p>System Status</p>
+            <strong id="live-status">🟢 Online</strong>
+            <button id="theme-toggle" class="ghost" style="margin-top:1rem;width:100%;">🌓 Dark / Light</button>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Shift Planning</p>
+                <h1>Staffing Plan Configuration</h1>
+                <p>Set required headcount per role, shift, and day.</p>
+            </div>
+            <div class="header-actions">
+                <button id="export-plan-btn" class="ghost">💾 Export Plan (JSON)</button>
+                <button id="import-plan-btn" class="ghost">📂 Import Plan</button>
+                <button id="reset-defaults-btn" class="ghost">⟳ Reset to Defaults</button>
+            </div>
+        </header>
+
+        <!-- ── Week Selector ── -->
+        <div class="week-selector">
+            <div>
+                <label>Schedule Week Starting</label>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <input type="date" id="week-start-date" value="{{ week_start }}"
+                        style="padding:6px 12px;border-radius:40px;border:1px solid var(--border-medium);background:var(--bg-surface);color:var(--text-primary);">
+                    <button id="load-week-plan" class="ghost">Load / Create</button>
+                </div>
+            </div>
+            <div>
+                <label>Past Schedules</label>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <select id="past-schedules-select"
+                        style="padding:6px 12px;border-radius:40px;border:1px solid var(--border-medium);background:var(--bg-surface);color:var(--text-primary);">
+                        <option value="">-- Select a past week --</option>
+                        {% for week in past_weeks %}
+                        <option value="{{ week.plan_id }}">{{ week.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button id="load-past-plan" class="ghost">Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Staffing Form ── -->
+        <form id="staffing-form" method="POST">
+            <input type="hidden" name="week_start" id="form-week-start" value="{{ week_start }}">
+
+            {% for day in days %}
+            <div class="day-box" data-day="{{ day }}">
+                <h2>{{ day }}</h2>
+                {% for shift in shifts %}
+                <div class="shift-section" data-shift="{{ shift }}">
+                    <h3>{{ shift }}</h3>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.75rem;">
+                        {% for role in roles %}
+                        <div class="role-input-group">
+                            <label>{{ role }}</label>
+                            <input
+                                type="number" min="0" step="1"
+                                name="{{ staffing_field_name(day, shift, role) }}"
+                                value="{{ staffing_plan[day][shift][role] }}"
+                                data-role="{{ role }}"
+                                data-day="{{ day }}"
+                                data-shift="{{ shift }}"
+                                class="staffing-input">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div style="display:flex;gap:1rem;margin-top:1rem;align-items:center;">
+                <button type="submit" class="primary">💾 Save & Preview</button>
+                {% if analysis and plan_id %}
+                <a href="/schedule/view/{{ plan_id }}" class="btn primary" style="text-decoration:none;">
+                    📅 View Full Schedule
+                </a>
+                {% endif %}
+            </div>
+        </form>
+
+        <!-- ── Labor Cost Analysis ── -->
+        {% if analysis %}
+        <div class="analysis-card" id="analysis-section">
+            <div class="panel-header"><h2>Estimated Labor Cost</h2></div>
+            <div class="metrics-grid" style="grid-template-columns:repeat(1,1fr);">
+                <div class="metric-card">
+                    <div class="metric-value">${{ analysis.estimated_labor }}</div>
+                    <p>Estimated Weekly Labor Cost</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Inline Schedule Preview (shows after save) ── -->
+        {% if plan_id %}
+        <div class="preview-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                <h2>📅 Schedule Preview</h2>
+                <a href="/schedule/view/{{ plan_id }}" style="font-size:0.8rem;color:var(--blue);">
+                    Open Full View →
+                </a>
+            </div>
+            <div id="inline-preview-container">
+                <div class="preview-loading">⏳ Loading preview...</div>
+            </div>
+        </div>
+        <script>
+            // Auto-load inline preview after save
+            (async function loadInlinePreview() {
+                const container = document.getElementById('inline-preview-container');
+                try {
+                    const res = await fetch('/schedule/api/schedule/{{ plan_id }}');
+                    if (!res.ok) throw new Error('Failed');
+                    const data = await res.json();
+                    const { schedule, days, shifts, roles } = data;
+
+                    function escHtml(s) {
+                        if (!s) return '';
+                        return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+                    }
+
+                    // Only show roles with at least one assignment
+                    const activeRoles = roles.filter(role =>
+                        days.some(day => shifts.some(shift => (schedule[day]?.[shift]?.[role] || []).length > 0))
+                    );
+
+                    if (!activeRoles.length) {
+                        container.innerHTML = '<p style="color:var(--text-muted);font-style:italic;">No employees matched for this plan. Check availability settings.</p>';
+                        return;
+                    }
+
+                    let html = '';
+                    shifts.forEach(shift => {
+                        const cls = shift.toLowerCase().includes('morning') ? 'morning' : 'dinner';
+                        const icon = cls === 'morning' ? '☀️' : '🌙';
+                        html += `<div class="preview-grid">`;
+                        // Header row
+                        html += `<div class="preview-header">${icon} ${shift}</div>`;
+                        days.forEach(day => {
+                            html += `<div class="preview-header">${day.substring(0,3)}</div>`;
+                        });
+                        // Role rows
+                        activeRoles.forEach(role => {
+                            const hasAny = days.some(day => (schedule[day]?.[shift]?.[role] || []).length > 0);
+                            if (!hasAny) return;
+                            html += `<div class="preview-role-label">${escHtml(role)}</div>`;
+                            days.forEach(day => {
+                                const assigned = schedule[day]?.[shift]?.[role] || [];
+                                html += `<div class="preview-cell">`;
+                                if (assigned.length) {
+                                    assigned.forEach(emp => {
+                                        html += `<span class="emp-chip ${cls}">${escHtml(emp.name)}</span>`;
+                                    });
+                                } else {
+                                    html += `<span class="no-staff">—</span>`;
+                                }
+                                html += `</div>`;
+                            });
+                        });
+                        html += `</div>`;
+                    });
+                    container.innerHTML = html;
+                } catch(e) {
+                    container.innerHTML = '<p style="color:var(--text-muted);">Could not load preview.</p>';
+                }
+            })();
+        </script>
+        {% endif %}
+        {% endif %}
+
+    </main>
+</div>
+
+<!-- ===== IMPORT MODAL ===== -->
+<div id="import-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>📂 Import Staffing Plan</h2>
+        <p>Upload a JSON file exported from this tool.</p>
+        <input type="file" id="import-file-input" accept=".json">
+        <div class="modal-actions">
+            <button id="confirm-import-btn" class="primary">Import</button>
+            <button id="cancel-import-btn" class="ghost">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+    window.scheduleData = {
+        days:        {{ days | tojson }},
+        shifts:      {{ shifts | tojson }},
+        roles:       {{ roles | tojson }},
+        staffingPlan: {{ staffing_plan | tojson }},
+        weekStart:   "{{ week_start }}",
+        pastWeeks:   {{ past_weeks | tojson }}
+    };
+
+    function staffingFieldName(day, shift, role) {
+        return "staffing__" + day + "__" + shift + "__" + role;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    // ── Theme ──
+    function initTheme() {
+        const saved = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            toggle.onclick = () => {
+                const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            };
+        }
+    }
+    initTheme();
+
+    // ── Get current plan from form inputs ──
+    function getCurrentPlanFromForm() {
+        let plan = {};
+        window.scheduleData.days.forEach(day => {
+            plan[day] = {};
+            window.scheduleData.shifts.forEach(shift => {
+                plan[day][shift] = {};
+                window.scheduleData.roles.forEach(role => {
+                    const input = document.querySelector(`input[name="${staffingFieldName(day, shift, role)}"]`);
+                    plan[day][shift][role] = input ? (parseInt(input.value, 10) || 0) : 0;
+                });
+            });
+        });
+        return plan;
+    }
+
+    // ── Export ──
+    document.getElementById('export-plan-btn').addEventListener('click', () => {
+        const plan = getCurrentPlanFromForm();
+        const blob = new Blob([JSON.stringify(plan, null, 2)], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `staffing_plan_${new Date().toISOString().slice(0,19)}.json`;
+        [document.body.app](https://document.body.app)endChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // ── Import modal ──
+    const importModal   = document.getElementById('import-modal');
+    const closeImport   = () => { importModal.style.display = 'none'; };
+    document.getElementById('import-plan-btn').onclick  = () => { importModal.style.display = 'flex'; };
+    importModal.querySelector('.close').onclick         = closeImport;
+    document.getElementById('cancel-import-btn').onclick = closeImport;
+    window.onclick = e => { if (e.target === importModal) closeImport(); };
+
+    document.getElementById('confirm-import-btn').onclick = () => {
+        const file = document.getElementById('import-file-input').files[0];
+        if (!file) { alert('Select a JSON file'); return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                window.scheduleData.days.forEach(day => {
+                    if (!imported[day]) return;
+                    window.scheduleData.shifts.forEach(shift => {
+                        if (!imported[day][shift]) return;
+                        window.scheduleData.roles.forEach(role => {
+                            const val = imported[day][shift][role];
+                            if (typeof val === 'number') {
+                                const input = document.querySelector(`input[name="${staffingFieldName(day, shift, role)}"]`);
+                                if (input) input.value = val;
+                            }
+                        });
+                    });
+                });
+                alert('Plan imported successfully');
+                closeImport();
+            } catch (err) {
+                alert('Invalid JSON file');
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    // ── Reset to defaults ──
+    document.getElementById('reset-defaults-btn').addEventListener('click', () => {
+        if (confirm('Reset all staffing numbers to default values?')) {
+            window.location.href = `/schedule/setup?week_start=${window.scheduleData.weekStart}`;
+        }
+    });
+
+    // ── Load past plan ──
+    document.getElementById('load-past-plan').addEventListener('click', () => {
+        const planId = document.getElementById('past-schedules-select').value;
+        if (!planId) { alert('Select a past schedule'); return; }
+        window.location.href = `/schedule/setup?copy_plan=${planId}`;
+    });
+
+    // ── Load/Create week ──
+    document.getElementById('load-week-plan').addEventListener('click', () => {
+        const newWeek = document.getElementById('week-start-date').value;
+        if (newWeek) window.location.href = `/schedule/setup?week_start=${newWeek}`;
+    });
+
+    // ── Sync date inputs ──
+    document.getElementById('week-start-date').value  = window.scheduleData.weekStart;
+    document.getElementById('form-week-start').value  = window.scheduleData.weekStart;
+
+    // ── Coming soon nav links ──
+    document.querySelectorAll('#nav-labor, #nav-reports, #nav-forecast').forEach(link => {
+        link.addEventListener('click', e => {
+            e.preventDefault();
+            alert('This module is coming in Phase 9');
+        });
+    });
+</script>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

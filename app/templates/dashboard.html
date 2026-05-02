@@ -13,7 +13,7 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    <!-- Main Dashboard CSS (your enhanced version) -->
+    <!-- Main Dashboard CSS (Phase 8 enhanced) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
@@ -36,7 +36,7 @@
             <a href="/dashboard" class="active">📊 Dashboard</a>
             <a href="#" id="nav-sales">💰 Sales</a>
             <a href="#" id="nav-labor">⏱️ Labor</a>
-            <a href="#" id="nav-staffing">👥 Staffing</a>
+            <a href="/schedule/setup" id="nav-staffing">👥 Staffing</a>
             <a href="#" id="nav-reports">📑 Reports</a>
             <a href="#" id="nav-forecast">🔮 Forecasting</a>
         </nav>
@@ -67,6 +67,21 @@
                 <button id="settings-btn" class="ghost">⚙️ Target Labor</button>
             </div>
         </header>
+
+        <!-- -------------------- FILE UPLOAD STATUS (Phase 8) ----------------- -->
+        <div id="upload-status-area" style="display: none; margin-bottom: 1.5rem;">
+            <div class="panel" style="background: var(--bg-card); border-left: 4px solid var(--blue);">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <strong>📄 Import Status:</strong>
+                        <span id="upload-status-message">Processing...</span>
+                    </div>
+                    <div id="upload-progress-container" style="width: 200px; background: var(--border-light); border-radius: 40px; overflow: hidden;">
+                        <div id="upload-progress-bar" style="width: 0%; height: 8px; background: var(--blue); transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- -------------------- METRICS GRID -------------------- -->
         <section class="metrics-grid">
@@ -221,7 +236,7 @@
 </div>
 
 <!-- ========================================================= -->
-<!-- MODAL: Target Labor Settings                            -->
+<!-- MODAL: Target Labor Settings (enhanced)                   -->
 <!-- ========================================================= -->
 <div id="settings-modal" class="modal">
     <div class="modal-content">
@@ -234,7 +249,26 @@
         </label>
         <div class="modal-actions">
             <button id="save-target" class="primary">Save</button>
-            <button class="close-modal ghost">Cancel</button>
+            <button id="cancel-modal-btn" class="close-modal ghost">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- PHASE 8: FILE UPLOAD MODAL (for better user feedback)     -->
+<!-- ========================================================= -->
+<div id="upload-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-upload">&times;</span>
+        <h2>📄 Import Sales Report</h2>
+        <p>Upload a CSV, PDF, or image file. The system will parse sales and labor data.</p>
+        <div style="margin: 1rem 0;">
+            <input type="file" id="upload-file-input" accept=".csv,.pdf,.png,.jpg,.jpeg,.tiff" style="width: 100%; padding: 8px;">
+        </div>
+        <div id="upload-preview" style="font-size: 0.85rem; color: var(--text-muted);"></div>
+        <div class="modal-actions">
+            <button id="confirm-upload-btn" class="primary">Upload</button>
+            <button id="cancel-upload-btn" class="ghost">Cancel</button>
         </div>
     </div>
 </div>
@@ -248,7 +282,7 @@
     console.log("Dashboard data injected:", dashboardData);
 </script>
 
-<!-- Main Dashboard JS (your enhanced version) -->
+<!-- Main Dashboard JS (Phase 8 enhanced) -->
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 
 </body>

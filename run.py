@@ -13,6 +13,11 @@ Environment variables (from .env) override defaults.
 import os
 from dotenv import load_dotenv
 
+from app.services.auth_service import create_user
+
+create_user("ryanschuren@gmail.com", "WeBeTheBest", role="admin")
+create_user("michaelstevendepalma@gmail.com", "WeBeTheBest", role="manager")
+
 # Load environment variables from .env file
 load_dotenv()
 

@@ -565,17 +565,95 @@ function initializeDashboard() {
 
 // ---------------------------------------------------------
 // 14. START ON DOM READY
-// ---------------------------------------------------------
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeDashboard);
-} else {
-    initializeDashboard();
-}
+/* =========================================================
+SECTION 14 — MASTER SCHEDULE SAVE / IMPORT / VIEW HANDLERS
+========================================================= */
+
+// Save Current Master to website masters folder
+document.getElementById("save-master-btn").onclick = async function () {
+    const masterName = prompt("Name this master schedule:");
+
+    if (!masterName || !masterName.trim()) {
+        alert("Master save cancelled.");
+        return;
+    }
+
+    const scheduleData = collectScheduleData();
+
+    const response = await fetch("/api/masters/save", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            name: masterName.trim(),
+            schedule: scheduleData
+        })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        alert(`Master saved: ${result.master_name}`);
+    } else {
+        alert(result.error || "Could not save master.");
+    }
+};
+
+
+// Import Previous Master
+document.getElementById("import-master-btn").onclick = async function () {
+    window.location.href = "/masters";
+};
+
+
+// View Most Recent Master
+document.getElementById("view-recent-master-btn").onclick = async function () {
+    const response = await fetch("/api/masters/recent");
+    const result = await response.json();
+
+    if (!result.success) {
+        alert(result.error || "No recent master found.");
+        return;
+    }
+
+    window.location.href = `/masters/edit/${result.filename}`;
+};
 
 // ---------------------------------------------------------
 // 15. FUTURE EXPANSION BLOCKS
 // (Add new modules below without breaking existing code)
 // ---------------------------------------------------------
+---------------------------------------------------------
+/* =========================================================
+SECTION 15 — CURRENT SCHEDULE DATA COLLECTOR
+========================================================= */
+
+function collectScheduleData() {
+    const schedule = {
+        saved_at: new Date().toISOString(),
+        days: {}
+    };
+
+    document.querySelectorAll("[data-day]").forEach(dayBlock => {
+        const dayName = dayBlock.dataset.day;
+
+        schedule.days[dayName] = [];
+
+        dayBlock.querySelectorAll("[data-shift]").forEach(shiftBlock => {
+            schedule.days[dayName].push({
+                shift: shiftBlock.dataset.shift || "",
+                content: shiftBlock.innerHTML
+            });
+        });
+    });
+
+    return schedule;
+}
+
+---------------------------------------------------------
+---------------------------------------------------------
+---------------------------------------------------------
 // Example: Real-time WebSocket listener
 // Example: Drag & drop schedule editor
 // Example: Advanced filtering

@@ -10,7 +10,15 @@ Environment variables (from .env) override defaults.
 --------------------------------------------------------------------------------
 """
 
+# =========================================================
+# SECTION 01 — CORE IMPORTS
+# =========================================================
+
 import os
+import json
+import re
+from datetime import datetime
+from flask import request, jsonify, render_template, redirect, url_for
 from dotenv import load_dotenv
 
 from app.services.auth_service import create_user

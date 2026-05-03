@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
+<!-- ========================================================= -->
+<!-- SECTION 01 — HEAD / PAGE META / ASSETS                   -->
+<!-- ========================================================= -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -8,43 +12,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 
+    <!-- ===================================================== -->
+    <!-- SECTION 02 — PAGE-SPECIFIC STYLES                    -->
+    <!-- ===================================================== -->
     <style>
-        .day-box {
+        /* =========================
+           02.01 — Info Panels
+        ========================= */
+        .phase-note {
             background: var(--bg-card);
-            backdrop-filter: blur(8px);
             border: 1px solid var(--border-light);
+            border-left: 4px solid var(--blue);
             border-radius: var(--radius-md);
-            padding: 1.25rem;
+            padding: 1rem 1.25rem;
             margin-bottom: 1.5rem;
-            transition: var(--transition);
         }
-        .day-box:hover { border-color: var(--blue); box-shadow: var(--shadow-sm); }
-        .shift-section {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: var(--bg-surface);
-            border-radius: var(--radius-sm);
-        }
-        .role-input-group { display: flex; flex-direction: column; gap: 0.25rem; }
-        .role-input-group label {
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-        }
-        .role-input-group input {
-            width: 70px;
-            padding: 6px 8px;
-            border-radius: 10px;
-            border: 1px solid var(--border-medium);
-            background: var(--bg-card);
-            color: var(--text-primary);
-            font-weight: 600;
-            text-align: center;
-        }
+
         .analysis-card {
             background: var(--bg-card);
             border-radius: var(--radius-lg);
@@ -52,6 +38,10 @@
             margin-top: 2rem;
             border-left: 4px solid var(--blue);
         }
+
+        /* =========================
+           02.02 — Week Controls
+        ========================= */
         .week-selector {
             display: flex;
             gap: 1rem;
@@ -59,39 +49,144 @@
             flex-wrap: wrap;
             margin-bottom: 1.5rem;
         }
+
         .week-selector label {
             display: block;
             font-size: 0.72rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-muted);
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.35rem;
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
 
-        /* ── Preview panel ── */
-        .preview-section { margin-top: 2rem; }
+        .week-control-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .week-control-row input,
+        .week-control-row select {
+            padding: 6px 12px;
+            border-radius: 40px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+        }
+
+        /* =========================
+           02.03 — Staffing Form
+        ========================= */
+        .day-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .day-box:hover {
+            border-color: var(--blue);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .shift-section {
+            margin-top: 1rem;
+            padding: 0.9rem;
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+        }
+
+        .role-input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .role-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .role-input-group label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .role-input-group input {
+            width: 72px;
+            padding: 7px 8px;
+            border-radius: 10px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .form-actions a {
+            text-decoration: none;
+        }
+
+        /* =========================
+           02.04 — Preview Grid
+        ========================= */
+        .preview-section {
+            margin-top: 2rem;
+        }
+
+        .preview-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .preview-section-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .preview-section-header a {
+            font-size: 0.8rem;
+            color: var(--blue);
+        }
+
         .preview-grid {
             display: grid;
-            grid-template-columns: 110px repeat(7, 1fr);
+            grid-template-columns: 115px repeat(7, 1fr);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
             overflow: hidden;
             margin-bottom: 1.5rem;
             font-size: 0.72rem;
         }
+
         .preview-header {
             background: var(--bg-surface);
-            font-weight: 700;
-            padding: 0.5rem 0.4rem;
+            font-weight: 800;
+            padding: 0.55rem 0.4rem;
             text-align: center;
             border-bottom: 2px solid var(--border-medium);
             border-right: 1px solid var(--border-light);
         }
-        .preview-header:first-child { text-align: left; padding-left: 0.75rem; }
+
         .preview-role-label {
             font-size: 0.7rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-secondary);
             padding: 0.45rem 0.75rem;
             background: var(--bg-card);
@@ -100,47 +195,121 @@
             display: flex;
             align-items: center;
         }
+
         .preview-cell {
             padding: 0.35rem 0.4rem;
             border-right: 1px solid var(--border-light);
             border-bottom: 1px solid var(--border-light);
             min-height: 48px;
         }
+
         .emp-chip {
             display: inline-block;
             border-radius: 20px;
             padding: 0.15rem 0.5rem;
             font-size: 0.65rem;
-            font-weight: 600;
+            font-weight: 700;
             margin: 0.1rem;
             white-space: nowrap;
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--blue);
         }
-        .emp-chip.morning { background: rgba(37,99,235,0.12); color: var(--blue); }
-        .emp-chip.dinner  { background: rgba(124,58,237,0.12); color: #7c3aed; }
-        .no-staff { font-size: 0.62rem; color: var(--text-muted); font-style: italic; }
-        .shift-label-row {
-            grid-column: 1 / -1;
-            padding: 0.35rem 0.75rem;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
+
+        .emp-chip.dinner {
+            background: rgba(124, 58, 237, 0.12);
+            color: #7c3aed;
+        }
+
+        .no-staff {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .preview-loading {
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        /* =========================
+           02.05 — Master Modals
+        ========================= */
+        .master-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .master-item {
+            padding: 0.75rem;
             border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .shift-label-row.morning { background: rgba(37,99,235,0.07); color: var(--blue); }
-        .shift-label-row.dinner  { background: rgba(124,58,237,0.07); color: #7c3aed; }
-        .preview-loading { padding: 1.5rem; text-align: center; color: var(--text-muted); }
+
+        .master-item:hover {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .master-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .modal-content.narrow {
+            max-width: 400px;
+        }
+
+        .modal-content.medium {
+            max-width: 600px;
+        }
+
+        .modal-center {
+            text-align: center;
+        }
+
+        .modal-choice-row {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        #master-name {
+            width: 100%;
+            margin: 1rem 0;
+            padding: 0.5rem;
+        }
+
+        #search-master {
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
     </style>
 </head>
+
 <body>
+
+<!-- ========================================================= -->
+<!-- SECTION 03 — APP SHELL                                   -->
+<!-- ========================================================= -->
 <div class="app-shell">
 
-    <!-- ===== SIDEBAR ===== -->
+    <!-- ===================================================== -->
+    <!-- SECTION 04 — SIDEBAR NAVIGATION                      -->
+    <!-- ===================================================== -->
     <aside class="sidebar">
         <div class="brand">
             <div class="brand-mark">TS</div>
-            <div><h2>Table Stack</h2><p>v4 Intelligence</p></div>
+            <div>
+                <h2>Table Stack</h2>
+                <p>v4 Intelligence</p>
+            </div>
         </div>
+
         <nav class="nav">
             <a href="/dashboard">📊 Dashboard</a>
             <a href="/sales">💰 Sales</a>
@@ -150,43 +319,88 @@
             <a href="#" id="nav-reports">📑 Reports</a>
             <a href="#" id="nav-forecast">🔮 Forecasting</a>
         </nav>
+
         <div class="sidebar-footer">
-            <p>System Status</p>
-            <strong id="live-status">🟢 Online</strong>
-            <button id="theme-toggle" class="ghost" style="margin-top:1rem;width:100%;">🌓 Dark / Light</button>
+            <div>
+                <p>System Status</p>
+                <strong id="live-status">🟢 Online</strong>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <div style="margin-top:1rem;font-size:0.85rem;line-height:1.4;">
+                <p style="color:var(--text-muted);">Signed in as</p>
+                <strong>{{ current_user.email }}</strong>
+                <p style="margin-top:0.25rem;color:var(--text-muted);">
+                    Role: <strong>{{ current_user.role|title }}</strong>
+                </p>
+            </div>
+
+            <a href="/security" class="ghost" style="margin-top:1rem;width:100%;display:flex;justify-content:center;text-decoration:none;">
+                🔐 Security Settings
+            </a>
+
+            <a href="/logout" class="danger" style="margin-top:0.5rem;width:100%;display:flex;justify-content:center;text-decoration:none;">
+                🚪 Logout
+            </a>
+            {% endif %}
+
+            <button id="theme-toggle" class="ghost" style="margin-top:1rem;width:100%;">
+                🌓 Dark / Light
+            </button>
+
+            <p style="font-size:0.7rem;margin-top:0.75rem;color:var(--text-muted);text-align:center;">
+                Session expires after inactivity
+            </p>
         </div>
     </aside>
 
-    <!-- ===== MAIN CONTENT ===== -->
+    <!-- ===================================================== -->
+    <!-- SECTION 05 — MAIN PAGE CONTENT                       -->
+    <!-- ===================================================== -->
     <main class="main-content">
+
+        <!-- ================================================= -->
+        <!-- SECTION 05.01 — PAGE HEADER / MASTER ACTIONS      -->
+        <!-- ================================================= -->
         <header class="page-header">
             <div>
-                <p class="eyebrow">Shift Planning</p>
+                <p class="eyebrow">Phase 11 · Master Schedule</p>
                 <h1>Staffing Plan Configuration</h1>
-                <p>Set required headcount per role, shift, and day.</p>
+                <p>Set required headcount by day and shift. Saves now update the current master schedule for the selected week.</p>
             </div>
+
             <div class="header-actions">
-                <button id="export-plan-btn" class="ghost">💾 Export Plan (JSON)</button>
-                <button id="import-plan-btn" class="ghost">📂 Import Plan</button>
-                <button id="reset-defaults-btn" class="ghost">⟳ Reset to Defaults</button>
+                <button id="export-master-btn" class="ghost">💾 Export Schedule to Masters</button>
+                <button id="import-master-btn" class="ghost">📂 Import a Previous Master</button>
+                <button id="view-recent-master-btn" class="ghost">📅 View Most Recent Master</button>
+                <button id="reset-defaults-btn" class="ghost">⟳ Reset Current Defaults</button>
             </div>
         </header>
 
-        <!-- ── Week Selector ── -->
+        <!-- ================================================= -->
+        <!-- SECTION 05.02 — MASTER MODE NOTE                 -->
+        <!-- ================================================= -->
+        <div class="phase-note">
+            <strong>Master Schedule Mode:</strong>
+            Save your current plan as a named master schedule, import a previously saved master, or jump straight into the most recent editable master.
+        </div>
+
+        <!-- ================================================= -->
+        <!-- SECTION 05.03 — WEEK SELECTION CONTROLS          -->
+        <!-- ================================================= -->
         <div class="week-selector">
             <div>
                 <label>Schedule Week Starting</label>
-                <div style="display:flex;gap:0.5rem;align-items:center;">
-                    <input type="date" id="week-start-date" value="{{ week_start }}"
-                        style="padding:6px 12px;border-radius:40px;border:1px solid var(--border-medium);background:var(--bg-surface);color:var(--text-primary);">
+                <div class="week-control-row">
+                    <input type="date" id="week-start-date" value="{{ week_start }}">
                     <button id="load-week-plan" class="ghost">Load / Create</button>
                 </div>
             </div>
+
             <div>
                 <label>Past Schedules</label>
-                <div style="display:flex;gap:0.5rem;align-items:center;">
-                    <select id="past-schedules-select"
-                        style="padding:6px 12px;border-radius:40px;border:1px solid var(--border-medium);background:var(--bg-surface);color:var(--text-primary);">
+                <div class="week-control-row">
+                    <select id="past-schedules-select">
                         <option value="">-- Select a past week --</option>
                         {% for week in past_weeks %}
                         <option value="{{ week.plan_id }}">{{ week.label }}</option>
@@ -197,28 +411,35 @@
             </div>
         </div>
 
-        <!-- ── Staffing Form ── -->
+        <!-- ================================================= -->
+        <!-- SECTION 05.04 — STAFFING FORM                    -->
+        <!-- ================================================= -->
         <form id="staffing-form" method="POST">
             <input type="hidden" name="week_start" id="form-week-start" value="{{ week_start }}">
 
             {% for day in days %}
             <div class="day-box" data-day="{{ day }}">
                 <h2>{{ day }}</h2>
+
                 {% for shift in shifts %}
                 <div class="shift-section" data-shift="{{ shift }}">
                     <h3>{{ shift }}</h3>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.75rem;">
+
+                    <div class="role-input-grid">
                         {% for role in roles %}
                         <div class="role-input-group">
                             <label>{{ role }}</label>
                             <input
-                                type="number" min="0" step="1"
+                                type="number"
+                                min="0"
+                                step="1"
                                 name="{{ staffing_field_name(day, shift, role) }}"
                                 value="{{ staffing_plan[day][shift][role] }}"
                                 data-role="{{ role }}"
                                 data-day="{{ day }}"
                                 data-shift="{{ shift }}"
-                                class="staffing-input">
+                                class="staffing-input"
+                            >
                         </div>
                         {% endfor %}
                     </div>
@@ -227,20 +448,26 @@
             </div>
             {% endfor %}
 
-            <div style="display:flex;gap:1rem;margin-top:1rem;align-items:center;">
-                <button type="submit" class="primary">💾 Save & Preview</button>
+            <div class="form-actions">
+                <button type="submit" class="primary">💾 Save to Master Schedule</button>
+
                 {% if analysis and plan_id %}
-                <a href="/schedule/view/{{ plan_id }}" class="btn primary" style="text-decoration:none;">
+                <a href="/schedule/view/{{ plan_id }}" class="btn primary">
                     📅 View Full Schedule
                 </a>
                 {% endif %}
             </div>
         </form>
 
-        <!-- ── Labor Cost Analysis ── -->
+        <!-- ================================================= -->
+        <!-- SECTION 05.05 — LABOR ANALYSIS                   -->
+        <!-- ================================================= -->
         {% if analysis %}
-        <div class="analysis-card" id="analysis-section">
-            <div class="panel-header"><h2>Estimated Labor Cost</h2></div>
+        <div class="analysis-card">
+            <div class="panel-header">
+                <h2>Estimated Labor Cost</h2>
+            </div>
+
             <div class="metrics-grid" style="grid-template-columns:repeat(1,1fr);">
                 <div class="metric-card">
                     <div class="metric-value">${{ analysis.estimated_labor }}</div>
@@ -249,235 +476,536 @@
             </div>
         </div>
 
-        <!-- ── Inline Schedule Preview (shows after save) ── -->
+        <!-- ================================================= -->
+        <!-- SECTION 05.06 — INLINE MASTER PREVIEW            -->
+        <!-- ================================================= -->
         {% if plan_id %}
         <div class="preview-section">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-                <h2>📅 Schedule Preview</h2>
-                <a href="/schedule/view/{{ plan_id }}" style="font-size:0.8rem;color:var(--blue);">
-                    Open Full View →
-                </a>
+            <div class="preview-section-header">
+                <div>
+                    <h2>📅 Master Schedule Preview</h2>
+                    <p>Preview from saved master schedule.</p>
+                </div>
+
+                <a href="/schedule/view/{{ plan_id }}">Open Full View →</a>
             </div>
+
             <div id="inline-preview-container">
-                <div class="preview-loading">⏳ Loading preview...</div>
+                <div class="preview-loading">⏳ Loading master preview...</div>
             </div>
         </div>
-        <script>
-            // Auto-load inline preview after save
-            (async function loadInlinePreview() {
-                const container = document.getElementById('inline-preview-container');
-                try {
-                    const res = await fetch('/schedule/api/schedule/{{ plan_id }}');
-                    if (!res.ok) throw new Error('Failed');
-                    const data = await res.json();
-                    const { schedule, days, shifts, roles } = data;
-
-                    function escHtml(s) {
-                        if (!s) return '';
-                        return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-                    }
-
-                    // Only show roles with at least one assignment
-                    const activeRoles = roles.filter(role =>
-                        days.some(day => shifts.some(shift => (schedule[day]?.[shift]?.[role] || []).length > 0))
-                    );
-
-                    if (!activeRoles.length) {
-                        container.innerHTML = '<p style="color:var(--text-muted);font-style:italic;">No employees matched for this plan. Check availability settings.</p>';
-                        return;
-                    }
-
-                    let html = '';
-                    shifts.forEach(shift => {
-                        const cls = shift.toLowerCase().includes('morning') ? 'morning' : 'dinner';
-                        const icon = cls === 'morning' ? '☀️' : '🌙';
-                        html += `<div class="preview-grid">`;
-                        // Header row
-                        html += `<div class="preview-header">${icon} ${shift}</div>`;
-                        days.forEach(day => {
-                            html += `<div class="preview-header">${day.substring(0,3)}</div>`;
-                        });
-                        // Role rows
-                        activeRoles.forEach(role => {
-                            const hasAny = days.some(day => (schedule[day]?.[shift]?.[role] || []).length > 0);
-                            if (!hasAny) return;
-                            html += `<div class="preview-role-label">${escHtml(role)}</div>`;
-                            days.forEach(day => {
-                                const assigned = schedule[day]?.[shift]?.[role] || [];
-                                html += `<div class="preview-cell">`;
-                                if (assigned.length) {
-                                    assigned.forEach(emp => {
-                                        html += `<span class="emp-chip ${cls}">${escHtml(emp.name)}</span>`;
-                                    });
-                                } else {
-                                    html += `<span class="no-staff">—</span>`;
-                                }
-                                html += `</div>`;
-                            });
-                        });
-                        html += `</div>`;
-                    });
-                    container.innerHTML = html;
-                } catch(e) {
-                    container.innerHTML = '<p style="color:var(--text-muted);">Could not load preview.</p>';
-                }
-            })();
-        </script>
         {% endif %}
         {% endif %}
-
     </main>
 </div>
 
-<!-- ===== IMPORT MODAL ===== -->
-<div id="import-modal" class="modal">
-    <div class="modal-content">
+<!-- ========================================================= -->
+<!-- SECTION 06 — MODALS                                      -->
+<!-- ========================================================= -->
+
+<!-- ========================================================= -->
+<!-- SECTION 06.01 — IMPORT MASTER MODAL                      -->
+<!-- ========================================================= -->
+<div id="import-master-modal" class="modal">
+    <div class="modal-content medium">
         <span class="close">&times;</span>
-        <h2>📂 Import Staffing Plan</h2>
-        <p>Upload a JSON file exported from this tool.</p>
-        <input type="file" id="import-file-input" accept=".json">
+
+        <h2>📂 Import a Previous Master</h2>
+
+        <input
+            type="text"
+            id="search-master"
+            placeholder="Search by name..."
+            class="search-box"
+        >
+
+        <div id="master-list-container" class="master-list">
+            Loading masters...
+        </div>
+
         <div class="modal-actions">
-            <button id="confirm-import-btn" class="primary">Import</button>
-            <button id="cancel-import-btn" class="ghost">Cancel</button>
+            <button id="cancel-import-master" class="ghost">Cancel</button>
         </div>
     </div>
 </div>
 
-<!-- ===== SCRIPTS ===== -->
+<!-- ========================================================= -->
+<!-- SECTION 06.02 — EXPORT MASTER MODAL                      -->
+<!-- ========================================================= -->
+<div id="export-master-modal" class="modal">
+    <div class="modal-content narrow">
+        <span class="close">&times;</span>
+
+        <h2>💾 Export to Masters</h2>
+        <p>Save the current schedule as a named master.</p>
+
+        <input
+            type="text"
+            id="master-name"
+            placeholder="Master name"
+        >
+
+        <div class="modal-actions">
+            <button id="confirm-export-master" class="primary">Save Master</button>
+            <button id="cancel-export-master" class="ghost">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- SECTION 06.03 — FIRST VISIT ENTRY DIALOG                 -->
+<!-- ========================================================= -->
+<div id="entry-dialog" class="modal" style="display: none;">
+    <div class="modal-content narrow modal-center">
+        <h2>📋 Staffing Entry</h2>
+        <p>How would you like to proceed?</p>
+
+        <div class="modal-choice-row">
+            <button id="start-new-master" class="primary">Start New Master</button>
+            <button id="import-existing-master" class="ghost">Import Master</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- SECTION 07 — JAVASCRIPT                                  -->
+<!-- ========================================================= -->
 <script>
+    // =====================================================
+    // SECTION 07.01 — SERVER DATA BRIDGE
+    // =====================================================
     window.scheduleData = {
-        days:        {{ days | tojson }},
-        shifts:      {{ shifts | tojson }},
-        roles:       {{ roles | tojson }},
+        days: {{ days | tojson }},
+        shifts: {{ shifts | tojson }},
+        roles: {{ roles | tojson }},
         staffingPlan: {{ staffing_plan | tojson }},
-        weekStart:   "{{ week_start }}",
-        pastWeeks:   {{ past_weeks | tojson }}
+        weekStart: "{{ week_start }}",
+        pastWeeks: {{ past_weeks | tojson }}
     };
 
+    let currentWeekStart = "{{ week_start }}";
+
+    // =====================================================
+    // SECTION 07.02 — SMALL UTILITY HELPERS
+    // =====================================================
     function staffingFieldName(day, shift, role) {
         return "staffing__" + day + "__" + shift + "__" + role;
     }
 
     function escapeHtml(str) {
         if (!str) return '';
-        return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+        return String(str).replace(/[&<>"']/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            if (m === '"') return '&quot;';
+            return '&#39;';
+        });
     }
 
-    // ── Theme ──
-    function initTheme() {
-        const saved = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', saved);
-        const toggle = document.getElementById('theme-toggle');
-        if (toggle) {
-            toggle.onclick = () => {
-                const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
-            };
-        }
-    }
-    initTheme();
-
-    // ── Get current plan from form inputs ──
     function getCurrentPlanFromForm() {
-        let plan = {};
+        const plan = {};
+
         window.scheduleData.days.forEach(day => {
             plan[day] = {};
+
             window.scheduleData.shifts.forEach(shift => {
                 plan[day][shift] = {};
+
                 window.scheduleData.roles.forEach(role => {
-                    const input = document.querySelector(`input[name="${staffingFieldName(day, shift, role)}"]`);
-                    plan[day][shift][role] = input ? (parseInt(input.value, 10) || 0) : 0;
+                    const input = document.querySelector(
+                        `input[name="${staffingFieldName(day, shift, role)}"]`
+                    );
+
+                    plan[day][shift][role] = input
+                        ? (parseInt(input.value, 10) || 0)
+                        : 0;
                 });
             });
         });
+
         return plan;
     }
 
-    // ── Export ──
-    document.getElementById('export-plan-btn').addEventListener('click', () => {
-        const plan = getCurrentPlanFromForm();
-        const blob = new Blob([JSON.stringify(plan, null, 2)], { type: 'application/json' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `staffing_plan_${new Date().toISOString().slice(0,19)}.json`;
-        [document.body.app](https://document.body.app)endChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
+    function populateFormWithPlan(plan) {
+        window.scheduleData.days.forEach(day => {
+            if (!plan[day]) return;
 
-    // ── Import modal ──
-    const importModal   = document.getElementById('import-modal');
-    const closeImport   = () => { importModal.style.display = 'none'; };
-    document.getElementById('import-plan-btn').onclick  = () => { importModal.style.display = 'flex'; };
-    importModal.querySelector('.close').onclick         = closeImport;
-    document.getElementById('cancel-import-btn').onclick = closeImport;
-    window.onclick = e => { if (e.target === importModal) closeImport(); };
+            window.scheduleData.shifts.forEach(shift => {
+                if (!plan[day][shift]) return;
 
-    document.getElementById('confirm-import-btn').onclick = () => {
-        const file = document.getElementById('import-file-input').files[0];
-        if (!file) { alert('Select a JSON file'); return; }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const imported = JSON.parse(e.target.result);
-                window.scheduleData.days.forEach(day => {
-                    if (!imported[day]) return;
-                    window.scheduleData.shifts.forEach(shift => {
-                        if (!imported[day][shift]) return;
-                        window.scheduleData.roles.forEach(role => {
-                            const val = imported[day][shift][role];
-                            if (typeof val === 'number') {
-                                const input = document.querySelector(`input[name="${staffingFieldName(day, shift, role)}"]`);
-                                if (input) input.value = val;
-                            }
-                        });
+                window.scheduleData.roles.forEach(role => {
+                    const val = plan[day][shift][role];
+
+                    if (typeof val === 'number') {
+                        const input = document.querySelector(
+                            `input[name="${staffingFieldName(day, shift, role)}"]`
+                        );
+
+                        if (input) input.value = val;
+                    }
+                });
+            });
+        });
+    }
+
+    // =====================================================
+    // SECTION 07.03 — THEME CONTROL
+    // =====================================================
+    function initTheme() {
+        const saved = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+
+        const themeToggle = document.getElementById('theme-toggle');
+
+        if (!themeToggle) return;
+
+        themeToggle.onclick = () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem('theme', nextTheme);
+        };
+    }
+
+    initTheme();
+
+    // =====================================================
+    // SECTION 07.04 — INLINE MASTER PREVIEW
+    // =====================================================
+    {% if plan_id %}
+    (async function loadInlinePreview() {
+        const container = document.getElementById('inline-preview-container');
+
+        try {
+            const res = await fetch('/schedule/api/schedule/{{ plan_id }}');
+
+            if (!res.ok) throw new Error();
+
+            const data = await res.json();
+            const { schedule, days, shifts, roles } = data;
+
+            const activeRoles = roles.filter(role =>
+                days.some(day =>
+                    shifts.some(shift =>
+                        (schedule[day]?.[shift]?.[role] || []).length > 0
+                    )
+                )
+            );
+
+            if (!activeRoles.length) {
+                container.innerHTML = '<p class="text-muted">No employees matched for this plan.</p>';
+                return;
+            }
+
+            let html = '';
+
+            shifts.forEach(shift => {
+                const shiftClass = shift.toLowerCase().includes('morning')
+                    ? 'morning'
+                    : 'dinner';
+
+                const icon = shiftClass === 'morning' ? '☀️' : '🌙';
+
+                html += '<div class="preview-grid">';
+                html += `<div class="preview-header">${icon} ${escapeHtml(shift)}</div>`;
+
+                days.forEach(day => {
+                    html += `<div class="preview-header">${escapeHtml(day.substring(0, 3))}</div>`;
+                });
+
+                activeRoles.forEach(role => {
+                    const hasAny = days.some(day =>
+                        (schedule[day]?.[shift]?.[role] || []).length > 0
+                    );
+
+                    if (!hasAny) return;
+
+                    html += `<div class="preview-role-label">${escapeHtml(role)}</div>`;
+
+                    days.forEach(day => {
+                        const assigned = schedule[day]?.[shift]?.[role] || [];
+
+                        html += '<div class="preview-cell">';
+
+                        if (assigned.length) {
+                            assigned.forEach(emp => {
+                                html += `<span class="emp-chip ${shiftClass}">${escapeHtml(emp.name)}</span>`;
+                            });
+                        } else {
+                            html += '<span class="no-staff">—</span>';
+                        }
+
+                        html += '</div>';
                     });
                 });
-                alert('Plan imported successfully');
-                closeImport();
-            } catch (err) {
-                alert('Invalid JSON file');
+
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+
+        } catch (e) {
+            container.innerHTML = '<p class="text-muted">Preview unavailable.</p>';
+        }
+    })();
+    {% endif %}
+
+    // =====================================================
+    // SECTION 07.05 — MASTER MODAL REFERENCES
+    // =====================================================
+    const importModal = document.getElementById('import-master-modal');
+    const exportModal = document.getElementById('export-master-modal');
+    const entryDialog = document.getElementById('entry-dialog');
+
+    // =====================================================
+    // SECTION 07.06 — LOAD MASTER LIST
+    // =====================================================
+    async function loadMasterList(searchTerm = '') {
+        const container = document.getElementById('master-list-container');
+        container.innerHTML = 'Loading masters...';
+
+        try {
+            const res = await fetch('/schedule/api/masters');
+
+            if (!res.ok) throw new Error();
+
+            let masters = await res.json();
+
+            if (searchTerm) {
+                masters = masters.filter(master =>
+                    master.name.toLowerCase().includes(searchTerm.toLowerCase())
+                );
             }
-        };
-        reader.readAsText(file);
+
+            if (!masters.length) {
+                container.innerHTML = '<div class="text-muted">No saved masters found.</div>';
+                return;
+            }
+
+            container.innerHTML = masters.map(master => `
+                <div class="master-item" data-id="${master.id}">
+                    <div>
+                        <strong>${escapeHtml(master.name)}</strong><br>
+                        <small>Week: ${escapeHtml(master.week_start || 'unknown')}</small>
+                    </div>
+
+                    <div class="master-actions">
+                        <button class="load-master-btn" data-id="${master.id}">Load</button>
+                        <button class="delete-master-btn" data-id="${master.id}">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.load-master-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const id = btn.dataset.id;
+                    window.location.href = `/schedule/setup?master_id=${id}&week_start=${currentWeekStart}`;
+                };
+            });
+
+            document.querySelectorAll('.delete-master-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    if (!confirm('Delete this master schedule?')) return;
+
+                    const id = btn.dataset.id;
+
+                    await fetch(`/schedule/api/masters/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    loadMasterList(searchTerm);
+                };
+            });
+
+        } catch (e) {
+            container.innerHTML = 'Error loading masters.';
+        }
+    }
+
+    // =====================================================
+    // SECTION 07.07 — EXPORT MASTER HANDLERS
+    // =====================================================
+    document.getElementById('export-master-btn').onclick = () => {
+        exportModal.style.display = 'flex';
     };
 
-    // ── Reset to defaults ──
-    document.getElementById('reset-defaults-btn').addEventListener('click', () => {
-        if (confirm('Reset all staffing numbers to default values?')) {
-            window.location.href = `/schedule/setup?week_start=${window.scheduleData.weekStart}`;
+    document.getElementById('confirm-export-master').onclick = async () => {
+        const name = document.getElementById('master-name').value.trim();
+
+        if (!name) {
+            alert('Please enter a name for this master schedule');
+            return;
         }
+
+        const plan = getCurrentPlanFromForm();
+
+        const res = await fetch('/schedule/api/masters', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                staffing_plan: plan,
+                name: name,
+                week_start: currentWeekStart
+            })
+        });
+
+        if (res.ok) {
+            alert('Master saved successfully');
+            exportModal.style.display = 'none';
+            document.getElementById('master-name').value = '';
+        } else {
+            alert('Save failed');
+        }
+    };
+
+    document.getElementById('cancel-export-master').onclick = () => {
+        exportModal.style.display = 'none';
+    };
+
+    document.querySelectorAll('#export-master-modal .close').forEach(el => {
+        el.onclick = () => exportModal.style.display = 'none';
     });
 
-    // ── Load past plan ──
-    document.getElementById('load-past-plan').addEventListener('click', () => {
+    // =====================================================
+    // SECTION 07.08 — IMPORT MASTER HANDLERS
+    // =====================================================
+    document.getElementById('import-master-btn').onclick = () => {
+        importModal.style.display = 'flex';
+        loadMasterList('');
+    };
+
+    document.getElementById('cancel-import-master').onclick = () => {
+        importModal.style.display = 'none';
+    };
+
+    document.querySelectorAll('#import-master-modal .close').forEach(el => {
+        el.onclick = () => importModal.style.display = 'none';
+    });
+
+    document.getElementById('search-master').addEventListener('input', event => {
+        loadMasterList(event.target.value);
+    });
+
+    // =====================================================
+    // SECTION 07.09 — VIEW MOST RECENT MASTER HANDLER
+    // =====================================================
+    document.getElementById('view-recent-master-btn').onclick = async () => {
+        try {
+            const res = await fetch('/schedule/api/masters/recent');
+
+            if (!res.ok) {
+                alert('No master schedules found. Please export one first.');
+                return;
+            }
+
+            const master = await res.json();
+            const masterId = master.id;
+
+            window.location.href = `/schedule/view/${masterId}`;
+
+        } catch (err) {
+            console.error('Recent master load failed:', err);
+            alert('Could not load most recent master.');
+        }
+    };
+
+    // =====================================================
+    // SECTION 07.10 — RESET DEFAULTS HANDLER
+    // =====================================================
+    document.getElementById('reset-defaults-btn').onclick = () => {
+        if (confirm('Reset all staffing numbers to default values?')) {
+            window.location.href = `/schedule/setup?reset=true&week_start=${currentWeekStart}`;
+        }
+    };
+
+    // =====================================================
+    // SECTION 07.11 — WEEK / PAST PLAN HANDLERS
+    // =====================================================
+    document.getElementById('load-past-plan').onclick = () => {
         const planId = document.getElementById('past-schedules-select').value;
-        if (!planId) { alert('Select a past schedule'); return; }
-        window.location.href = `/schedule/setup?copy_plan=${planId}`;
-    });
 
-    // ── Load/Create week ──
-    document.getElementById('load-week-plan').addEventListener('click', () => {
+        if (!planId) {
+            alert('Select a past schedule');
+            return;
+        }
+
+        window.location.href = `/schedule/setup?copy_plan=${planId}&week_start=${currentWeekStart}`;
+    };
+
+    document.getElementById('load-week-plan').onclick = () => {
         const newWeek = document.getElementById('week-start-date').value;
-        if (newWeek) window.location.href = `/schedule/setup?week_start=${newWeek}`;
-    });
 
-    // ── Sync date inputs ──
-    document.getElementById('week-start-date').value  = window.scheduleData.weekStart;
-    document.getElementById('form-week-start').value  = window.scheduleData.weekStart;
+        if (newWeek) {
+            window.location.href = `/schedule/setup?week_start=${newWeek}`;
+        }
+    };
 
-    // ── Coming soon nav links ──
+    document.getElementById('week-start-date').value = currentWeekStart;
+    document.getElementById('form-week-start').value = currentWeekStart;
+
+    // =====================================================
+    // SECTION 07.12 — FIRST VISIT ENTRY DIALOG
+    // =====================================================
+    const entryShown = localStorage.getItem('staffing_entry_shown');
+
+    if (
+        !entryShown &&
+        !window.location.search.includes('master_id') &&
+        !window.location.search.includes('reset')
+    ) {
+        entryDialog.style.display = 'flex';
+    } else {
+        entryDialog.style.display = 'none';
+    }
+
+    document.getElementById('start-new-master').onclick = () => {
+        localStorage.setItem('staffing_entry_shown', 'true');
+        entryDialog.style.display = 'none';
+
+        if (!window.location.search.includes('plan')) {
+            window.location.href = `/schedule/setup?week_start=${currentWeekStart}`;
+        }
+    };
+
+    document.getElementById('import-existing-master').onclick = () => {
+        localStorage.setItem('staffing_entry_shown', 'true');
+        entryDialog.style.display = 'none';
+        importModal.style.display = 'flex';
+        loadMasterList('');
+    };
+
+    // =====================================================
+    // SECTION 07.13 — GLOBAL MODAL OUTSIDE-CLICK CLOSE
+    // =====================================================
+    window.onclick = function(event) {
+        if (event.target === entryDialog) {
+            entryDialog.style.display = 'none';
+        }
+
+        if (event.target === importModal) {
+            importModal.style.display = 'none';
+        }
+
+        if (event.target === exportModal) {
+            exportModal.style.display = 'none';
+        }
+    };
+
+    // =====================================================
+    // SECTION 07.14 — PLACEHOLDER NAV ITEMS
+    // =====================================================
     document.querySelectorAll('#nav-labor, #nav-reports, #nav-forecast').forEach(link => {
-        link.addEventListener('click', e => {
-            e.preventDefault();
-            alert('This module is coming in Phase 9');
+        link.addEventListener('click', event => {
+            event.preventDefault();
+            alert('Coming in Phase 13');
         });
     });
 </script>
 
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

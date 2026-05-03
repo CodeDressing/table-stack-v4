@@ -1,30 +1,34 @@
 """
 TABLE STACK v4 – SCHEDULE INTELLIGENCE SERVICE
 ================================================================================
+PHASE 11 PART 2 OF 8
+Master schedule persistence + editable schedule foundation.
+
 Purpose:
 - Manager-first schedule intelligence
-- Staffing plan defaults
-- Staffing form parsing
-- Employee availability matching
-- Custom shift-window matching
-- Labor cost estimation
-- Coverage analysis
-- Assigned employee previews
-- Staffing plan save/load/list/delete stubs
-- Future-ready structure for database persistence, shift swaps, drops, approvals
+- Remove non-Mike staffing positions from active planner
+- Persist staffing plans to disk
+- Persist current master schedules to disk
+- Support save-by-week, save-by-day, save-by-shift, save-by-role
+- Keep one current master schedule per week
+- Keep routes thin and reusable
 
-Architecture Rule:
-- Keep route files thin.
-- Keep employee loading in employee_service.
-- Keep schedule logic here.
-- Each numbered section is designed to be replaced independently later.
-
-Future Upgrade Pattern:
-- Replace SECTION 04 to change shift windows
-- Replace SECTION 06 to upgrade employee matching
-- Replace SECTION 08 to upgrade staffing analysis
-- Replace SECTION 09 to move plan storage into the database
-- Replace SECTION 11 to add manager approval workflows
+SECTION MAP
+01. Imports
+02. Configuration / storage paths
+03. Core constants
+04. Shift windows / time logic
+05. Default staffing plan
+06. Staffing form parsing
+07. Employee availability / matching
+08. Labor cost estimation
+09. Staffing analysis engine
+10. Schedule generation engine
+11. Persistent staffing plan storage
+12. Persistent master schedule storage
+13. Master schedule edit helpers
+14. Availability cache / background reanalysis
+15. Future expansion blocks
 ================================================================================
 """
 
@@ -32,10 +36,12 @@ Future Upgrade Pattern:
 # SECTION 01 — IMPORTS
 # ==============================================================================
 
-import os
 import copy
+import json
+import os
 import threading
 from datetime import datetime, time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.services.employee_service import (
@@ -46,10 +52,81 @@ from app.services.employee_service import (
 
 
 # ==============================================================================
-# SECTION 02 — CONFIGURATION
+# SECTION 02 — CONFIGURATION / STORAGE PATHS
 # ==============================================================================
 
 USE_DATABASE = os.getenv("USE_DATABASE", "False").lower() == "true"
+
+INSTANCE_DIR = Path.cwd() / "instance"
+STAFFING_PLAN_FILE = INSTANCE_DIR / "staffing_plans.json"
+MASTER_SCHEDULE_FILE = INSTANCE_DIR / "master_schedules.json"
+
+
+def ensure_storage_files() -> None:
+    """
+    Ensure local JSON persistence files exist.
+
+    This keeps TableStack usable without a database while still allowing
+    schedules/plans to survive app restarts.
+    """
+    INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+
+    if not STAFFING_PLAN_FILE.exists():
+        STAFFING_PLAN_FILE.write_text(
+            json.dumps(
+                {
+                    "plans": [],
+                    "next_id": 1,
+                    "last_updated": None,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+    if not MASTER_SCHEDULE_FILE.exists():
+        MASTER_SCHEDULE_FILE.write_text(
+            json.dumps(
+                {
+                    "master_schedules": [],
+                    "next_id": 1,
+                    "last_updated": None,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+
+def load_json_file(path: Path, default_data: Dict[str, Any]) -> Dict[str, Any]:
+    ensure_storage_files()
+
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        if not isinstance(data, dict):
+            return copy.deepcopy(default_data)
+
+        return data
+
+    except (json.JSONDecodeError, OSError):
+        return copy.deepcopy(default_data)
+
+
+def save_json_file(path: Path, data: Dict[str, Any]) -> bool:
+    ensure_storage_files()
+
+    data["last_updated"] = datetime.utcnow().isoformat()
+
+    try:
+        with path.open("w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+
+        return True
+
+    except OSError:
+        return False
 
 
 # ==============================================================================
@@ -61,11 +138,11 @@ SHIFTS = [
     "Dinner Shift",
 ]
 
+# Mike-facing staffing positions only.
+# Kitchen and Dishwasher are intentionally removed from active scheduling.
 ROLES = [
     "Server",
     "Bartender",
-    "Kitchen",
-    "Dishwasher",
     "Busser",
     "Runner",
     "Host",
@@ -73,6 +150,15 @@ ROLES = [
     "Expo",
     "Manager",
 ]
+
+REMOVED_POSITIONS = [
+    "Kitchen",
+    "Dishwasher",
+]
+
+MASTER_STATUS_DRAFT = "draft"
+MASTER_STATUS_POSTED = "posted"
+MASTER_STATUS_ARCHIVED = "archived"
 
 
 # ==============================================================================
@@ -86,16 +172,6 @@ SHIFT_WINDOWS = {
 
 
 def parse_time_string(value: str) -> Optional[time]:
-    """
-    Parse HH:MM into a time object.
-
-    Supports:
-    - "11:00"
-    - "16:30"
-    - "00:00"
-
-    Returns None if invalid.
-    """
     if not value:
         return None
 
@@ -114,13 +190,6 @@ def time_windows_overlap(
     shift_start: time,
     shift_end: time,
 ) -> bool:
-    """
-    Determine whether employee window overlaps shift window.
-
-    Note:
-    Midnight-crossing shifts can be improved later in this section.
-    Current logic handles your existing 00:00 values safely enough for v4.
-    """
     return employee_start <= shift_end and employee_end >= shift_start
 
 
@@ -129,9 +198,6 @@ def custom_window_matches_shift(
     day: str,
     shift: str,
 ) -> bool:
-    """
-    Check whether employee custom shift window overlaps the requested shift.
-    """
     shift_windows = employee.get("shift_windows", {})
     day_window = shift_windows.get(day)
 
@@ -166,8 +232,6 @@ DEFAULT_STAFFING_PLAN = {
         "Morning Shift": {
             "Server": 2,
             "Bartender": 1,
-            "Kitchen": 1,
-            "Dishwasher": 0,
             "Busser": 1,
             "Runner": 1,
             "Host": 1,
@@ -178,8 +242,6 @@ DEFAULT_STAFFING_PLAN = {
         "Dinner Shift": {
             "Server": 4,
             "Bartender": 2,
-            "Kitchen": 2,
-            "Dishwasher": 1,
             "Busser": 1,
             "Runner": 2,
             "Host": 1,
@@ -192,33 +254,48 @@ DEFAULT_STAFFING_PLAN = {
 }
 
 
+def clean_staffing_plan_roles(
+    staffing_plan: Dict[str, Dict[str, Dict[str, int]]],
+) -> Dict[str, Dict[str, Dict[str, int]]]:
+    """
+    Remove positions that should not be in Mike's staffing planner.
+    Also ensures every active role exists in every day/shift.
+    """
+    cleaned = {}
+
+    for day in DAYS:
+        cleaned[day] = {}
+
+        for shift in SHIFTS:
+            source_shift = staffing_plan.get(day, {}).get(shift, {})
+            cleaned[day][shift] = {}
+
+            for role in ROLES:
+                try:
+                    value = int(source_shift.get(role, 0))
+                except (TypeError, ValueError):
+                    value = 0
+
+                cleaned[day][shift][role] = max(0, value)
+
+    return cleaned
+
+
 def get_default_staffing_plan() -> Dict[str, Dict[str, Dict[str, int]]]:
-    """
-    Return a safe deep copy of the default staffing plan.
-    """
     return copy.deepcopy(DEFAULT_STAFFING_PLAN)
 
 
 # ==============================================================================
-# SECTION 06 — FORM PARSING
+# SECTION 06 — STAFFING FORM PARSING
 # ==============================================================================
 
 def staffing_field_name(day: str, shift: str, role: str) -> str:
-    """
-    Predictable form field name.
-
-    Example:
-        staffing__Monday__Dinner Shift__Server
-    """
     return f"staffing__{day}__{shift}__{role}"
 
 
 def parse_staffing_plan_from_form(
     form_data: Dict[str, Any],
 ) -> Dict[str, Dict[str, Dict[str, int]]]:
-    """
-    Parse submitted staffing numbers from schedule_setup.html.
-    """
     plan = get_default_staffing_plan()
 
     for day in DAYS:
@@ -233,7 +310,7 @@ def parse_staffing_plan_from_form(
 
                 plan[day][shift][role] = max(0, value)
 
-    return plan
+    return clean_staffing_plan_roles(plan)
 
 
 # ==============================================================================
@@ -244,9 +321,6 @@ def employee_can_work_day(
     employee: Dict[str, Any],
     day: str,
 ) -> bool:
-    """
-    Check if employee is available at all on a day.
-    """
     availability = employee.get("availability", {})
     value = availability.get(day, "Off")
 
@@ -263,16 +337,6 @@ def employee_can_work_shift(
     day: str,
     shift: str,
 ) -> bool:
-    """
-    Check if employee can work a specific day and shift.
-
-    Supports:
-    - Off
-    - Both
-    - Morning
-    - Dinner
-    - Custom shift windows
-    """
     availability = employee.get("availability", {})
     value = availability.get(day, "Off")
 
@@ -304,15 +368,6 @@ def find_available_employees(
     day: str,
     shift: str,
 ) -> List[Dict[str, Any]]:
-    """
-    Return employees matching:
-    - normalized role
-    - day availability
-    - shift availability/custom window
-
-    Uses all provided employees. The caller decides whether that is all employees
-    or only active employees.
-    """
     normalized_role = normalize_role(role)
 
     return [
@@ -326,6 +381,19 @@ def find_available_employees(
     ]
 
 
+def employee_public_schedule_shape(
+    employee: Dict[str, Any],
+    role: str,
+) -> Dict[str, Any]:
+    return {
+        "id": employee.get("id"),
+        "name": employee.get("name", "Unnamed Employee"),
+        "role": employee.get("role", role),
+        "hourly_rate": employee.get("hourly_rate", 0),
+        "preference": employee.get("preference", "Any"),
+    }
+
+
 def assign_employees_for_role(
     employees: List[Dict[str, Any]],
     role: str,
@@ -333,18 +401,6 @@ def assign_employees_for_role(
     shift: str,
     needed_count: int,
 ) -> List[Dict[str, Any]]:
-    """
-    Assign employees for one day/shift/role.
-
-    Current assignment logic:
-    - first available employees up to needed count
-
-    Future replacement:
-    - balance target hours
-    - avoid doubles
-    - rotate fairly
-    - respect approved swaps/drops
-    """
     if needed_count <= 0:
         return []
 
@@ -356,13 +412,7 @@ def assign_employees_for_role(
     )
 
     return [
-        {
-            "id": employee.get("id"),
-            "name": employee.get("name", "Unnamed Employee"),
-            "role": employee.get("role", role),
-            "hourly_rate": employee.get("hourly_rate", 0),
-            "preference": employee.get("preference", "Any"),
-        }
+        employee_public_schedule_shape(employee, role)
         for employee in available[:needed_count]
     ]
 
@@ -372,12 +422,6 @@ def assign_employees_for_role(
 # ==============================================================================
 
 def estimate_shift_hours(shift: str) -> float:
-    """
-    Basic hours by shift.
-
-    Future:
-    Replace with shift templates from DB.
-    """
     if shift == "Morning Shift":
         return 5.0
 
@@ -392,9 +436,6 @@ def estimate_role_labor_cost(
     needed_count: int,
     shift: str,
 ) -> float:
-    """
-    Estimate role labor cost using average rate of available employees.
-    """
     if needed_count <= 0 or not available_employees:
         return 0.0
 
@@ -413,17 +454,8 @@ def estimate_role_labor_cost(
 def analyze_staffing_plan(
     staffing_plan: Dict[str, Dict[str, Dict[str, int]]],
 ) -> Dict[str, Any]:
-    """
-    Analyze staffing plan against employee availability.
-
-    Returns:
-    - coverage rows
-    - gaps
-    - warnings
-    - estimated labor
-    - assigned employee preview
-    """
     employees = get_all_employees()
+    staffing_plan = clean_staffing_plan_roles(staffing_plan)
 
     coverage_rows = []
     gaps = []
@@ -519,6 +551,8 @@ def analyze_staffing_plan(
             "total_gaps": len(gaps),
             "total_warnings": len(warnings),
             "coverage_status": "Needs Attention" if gaps else "Covered",
+            "active_roles": ROLES,
+            "removed_positions": REMOVED_POSITIONS,
         },
     }
 
@@ -527,37 +561,48 @@ def analyze_staffing_plan(
 # SECTION 10 — SCHEDULE GENERATION ENGINE
 # ==============================================================================
 
+def empty_schedule() -> Dict[str, Dict[str, Dict[str, List[Dict[str, Any]]]]]:
+    return {
+        day: {
+            shift: {
+                role: []
+                for role in ROLES
+            }
+            for shift in SHIFTS
+        }
+        for day in DAYS
+    }
+
+
+def clean_schedule_roles(
+    schedule: Dict[str, Any],
+) -> Dict[str, Dict[str, Dict[str, List[Dict[str, Any]]]]]:
+    cleaned = empty_schedule()
+
+    for day in DAYS:
+        for shift in SHIFTS:
+            for role in ROLES:
+                employees = schedule.get(day, {}).get(shift, {}).get(role, [])
+
+                if isinstance(employees, list):
+                    cleaned[day][shift][role] = employees
+
+    return cleaned
+
+
 def generate_schedule_from_plan(
     staffing_plan: Dict[str, Dict[str, Dict[str, int]]],
     employees: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """
-    Generate final schedule using employee names.
-
-    Output:
-        schedule[day][shift][role] = [employee, employee, ...]
-
-    Current logic:
-    - role match
-    - availability match
-    - first available employees
-
-    Future:
-    - fair balancing
-    - manager approval states
-    - shift accept/drop/swap logic
-    """
     if employees is None:
         employees = get_all_employees()
 
-    schedule = {}
+    staffing_plan = clean_staffing_plan_roles(staffing_plan)
+
+    schedule = empty_schedule()
 
     for day in DAYS:
-        schedule[day] = {}
-
         for shift in SHIFTS:
-            schedule[day][shift] = {}
-
             for role in ROLES:
                 needed = staffing_plan.get(day, {}).get(shift, {}).get(role, 0)
 
@@ -573,148 +618,430 @@ def generate_schedule_from_plan(
 
 
 # ==============================================================================
-# SECTION 11 — OPTIONAL DATABASE MODEL STUB
+# ==============================================================================
+# SECTION 11 — PERSISTENT STAFFING PLAN STORAGE (complete)
 # ==============================================================================
 
-try:
-    from flask_sqlalchemy import SQLAlchemy
-    from sqlalchemy.types import JSON
-
-    db = SQLAlchemy()
-
-    class StaffingPlan(db.Model):
-        __tablename__ = "staffing_plans"
-
-        id = db.Column(db.Integer, primary_key=True)
-        name = db.Column(db.String(100), nullable=False)
-        plan_data = db.Column(JSON, nullable=False)
-        week_start = db.Column(db.String(20), nullable=True)
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
-        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-        is_active = db.Column(db.Boolean, default=False)
-        version = db.Column(db.Integer, default=1)
-        notes = db.Column(db.Text)
-
-    MODELS_AVAILABLE = True
-
-except ImportError:
-    db = None
-    StaffingPlan = None
-    MODELS_AVAILABLE = False
+def load_staffing_plan_store() -> Dict[str, Any]:
+    return load_json_file(
+        STAFFING_PLAN_FILE,
+        {
+            "plans": [],
+            "next_id": 1,
+            "last_updated": None,
+        },
+    )
 
 
-def get_db():
-    return db if MODELS_AVAILABLE else None
-
-
-# ==============================================================================
-# SECTION 12 — TEMPORARY PLAN STORAGE / CRUD
-# ==============================================================================
-
-_STAFFING_PLANS: Dict[int, Dict[str, Any]] = {}
-_PLAN_COUNTER = 1
+def save_staffing_plan_store(data: Dict[str, Any]) -> bool:
+    return save_json_file(STAFFING_PLAN_FILE, data)
 
 
 def save_staffing_plan(
     plan_data: Dict[str, Any],
     name: str,
-    notes: Optional[str] = None,
+    notes: str = "",
     set_active: bool = False,
     week_start: Optional[str] = None,
+    is_master: bool = False,
 ) -> Optional[int]:
     """
-    Save staffing plan.
-
-    Current:
-    - in-memory plan storage
-
-    Future:
-    - database persistence
+    Save a staffing plan. Returns plan_id.
+    If is_master=True, the plan will be marked as a master schedule.
     """
-    global _PLAN_COUNTER
+    store = load_staffing_plan_store()
+    plans = store.get("plans", [])
+    next_id = store.get("next_id", 1)
 
-    plan_id = _PLAN_COUNTER
-    _PLAN_COUNTER += 1
-
-    now = datetime.utcnow().isoformat()
-
-    if set_active:
-        for existing_plan in _STAFFING_PLANS.values():
-            existing_plan["is_active"] = False
-
-    _STAFFING_PLANS[plan_id] = {
-        "id": plan_id,
-        "name": name or f"Plan {plan_id}",
-        "plan_data": plan_data,
-        "week_start": week_start,
-        "created_at": now,
-        "updated_at": now,
+    # Check if we are updating an existing plan with the same week_start and is_master? Not needed.
+    # Simple: always create new plan (append). Allow duplicates for different versions.
+    new_plan = {
+        "id": next_id,
+        "name": name,
+        "plan_data": clean_staffing_plan_roles(plan_data),
+        "notes": notes,
         "is_active": set_active,
-        "version": 1,
-        "notes": notes or "",
+        "week_start": week_start,
+        "is_master": is_master,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
     }
+    plans.append(new_plan)
+    store["plans"] = plans
+    store["next_id"] = next_id + 1
 
-    return plan_id
+    if save_staffing_plan_store(store):
+        return next_id
+    return None
 
 
 def load_staffing_plan(plan_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Load staffing plan by ID.
-
-    plan_id=1 fallback returns the default plan if no in-memory plan exists.
-    """
-    if plan_id in _STAFFING_PLANS:
-        return _STAFFING_PLANS[plan_id]
-
-    if plan_id == 1:
+    store = load_staffing_plan_store()
+    for plan in store.get("plans", []):
+        if int(plan.get("id", -1)) == int(plan_id):
+            # Ensure plan_data has correct roles
+            plan["plan_data"] = clean_staffing_plan_roles(
+                plan.get("plan_data", get_default_staffing_plan())
+            )
+            return plan
+    # Fallback for default plan (id=1) if not found in store
+    if int(plan_id) == 1:
         return {
             "id": 1,
             "name": "Default Staffing Plan",
             "plan_data": get_default_staffing_plan(),
             "week_start": None,
+            "is_master": False,
             "created_at": None,
             "updated_at": None,
             "is_active": False,
-            "version": 1,
             "notes": "",
         }
-
     return None
 
 
 def list_staffing_plans() -> List[Dict[str, Any]]:
-    """
-    List saved plans.
-    """
-    return list(_STAFFING_PLANS.values())
+    store = load_staffing_plan_store()
+    plans = store.get("plans", [])
+    # Return sorted by updated_at descending
+    return sorted(
+        plans,
+        key=lambda p: p.get("updated_at") or "",
+        reverse=True,
+    )
 
 
 def delete_staffing_plan(plan_id: int) -> bool:
-    """
-    Delete saved plan.
-    """
-    if plan_id in _STAFFING_PLANS:
-        del _STAFFING_PLANS[plan_id]
-        return True
+    store = load_staffing_plan_store()
+    plans = store.get("plans", [])
+    new_plans = [p for p in plans if int(p.get("id", -1)) != int(plan_id)]
+    if len(new_plans) == len(plans):
+        return False
+    store["plans"] = new_plans
+    return save_staffing_plan_store(store)
 
-    return False
+
+def get_staffing_plan_for_week(week_start: str) -> Optional[Dict[str, Any]]:
+    """Return the most recent non‑master plan for the given week."""
+    store = load_staffing_plan_store()
+    matching = [
+        p for p in store.get("plans", [])
+        if p.get("week_start") == week_start and not p.get("is_master", False)
+    ]
+    if not matching:
+        return None
+    # Return the latest (by updated_at)
+    latest = sorted(matching, key=lambda p: p.get("updated_at") or "", reverse=True)[0]
+    return clean_staffing_plan_roles(latest.get("plan_data", get_default_staffing_plan()))
+# ==============================================================================
+# SECTION 12 — PERSISTENT MASTER SCHEDULE STORAGE
+# ==============================================================================
+
+def load_master_schedule_store() -> Dict[str, Any]:
+    return load_json_file(
+        MASTER_SCHEDULE_FILE,
+        {
+            "master_schedules": [],
+            "next_id": 1,
+            "last_updated": None,
+        },
+    )
 
 
-def get_staffing_plan_for_week(
+def save_master_schedule_store(data: Dict[str, Any]) -> bool:
+    return save_json_file(MASTER_SCHEDULE_FILE, data)
+
+
+def build_master_schedule_record(
+    week_start: str,
+    staffing_plan: Dict[str, Any],
+    schedule: Dict[str, Any],
+    source_plan_id: Optional[int] = None,
+    status: str = MASTER_STATUS_DRAFT,
+) -> Dict[str, Any]:
+    now = datetime.utcnow().isoformat()
+
+    return {
+        "id": None,
+        "week_start": week_start,
+        "status": status,
+        "source_plan_id": source_plan_id,
+        "staffing_plan": clean_staffing_plan_roles(staffing_plan),
+        "schedule": clean_schedule_roles(schedule),
+        "created_at": now,
+        "updated_at": now,
+        "published_at": None,
+        "edit_history": [],
+    }
+
+
+def get_master_schedule_for_week(
     week_start: str,
 ) -> Optional[Dict[str, Any]]:
-    """
-    Get plan data for a specific week.
-    """
-    for plan in _STAFFING_PLANS.values():
-        if plan.get("week_start") == week_start:
-            return plan.get("plan_data")
+    store = load_master_schedule_store()
+
+    matching = [
+        master for master in store.get("master_schedules", [])
+        if master.get("week_start") == week_start
+        and master.get("status") != MASTER_STATUS_ARCHIVED
+    ]
+
+    if not matching:
+        return None
+
+    return sorted(
+        matching,
+        key=lambda master: master.get("updated_at") or "",
+        reverse=True,
+    )[0]
+
+
+def save_master_schedule(
+    week_start: str,
+    staffing_plan: Dict[str, Any],
+    schedule: Dict[str, Any],
+    source_plan_id: Optional[int] = None,
+    status: str = MASTER_STATUS_DRAFT,
+) -> Optional[int]:
+    store = load_master_schedule_store()
+    masters = store.get("master_schedules", [])
+
+    existing = get_master_schedule_for_week(week_start)
+    now = datetime.utcnow().isoformat()
+
+    if existing:
+        master_id = int(existing.get("id"))
+        updated_masters = []
+
+        for master in masters:
+            if int(master.get("id", -1)) == master_id:
+                master["staffing_plan"] = clean_staffing_plan_roles(staffing_plan)
+                master["schedule"] = clean_schedule_roles(schedule)
+                master["source_plan_id"] = source_plan_id
+                master["status"] = status
+                master["updated_at"] = now
+                master.setdefault("edit_history", []).append({
+                    "type": "full_save",
+                    "timestamp": now,
+                    "message": "Full master schedule saved.",
+                })
+
+            updated_masters.append(master)
+
+        store["master_schedules"] = updated_masters
+        save_master_schedule_store(store)
+        return master_id
+
+    master_id = int(store.get("next_id", 1))
+
+    record = build_master_schedule_record(
+        week_start=week_start,
+        staffing_plan=staffing_plan,
+        schedule=schedule,
+        source_plan_id=source_plan_id,
+        status=status,
+    )
+
+    record["id"] = master_id
+
+    masters.append(record)
+
+    store["master_schedules"] = masters
+    store["next_id"] = master_id + 1
+
+    if save_master_schedule_store(store):
+        return master_id
 
     return None
 
 
+def generate_and_save_master_schedule(
+    week_start: str,
+    staffing_plan: Dict[str, Any],
+    source_plan_id: Optional[int] = None,
+) -> Optional[Dict[str, Any]]:
+    schedule = generate_schedule_from_plan(staffing_plan)
+
+    master_id = save_master_schedule(
+        week_start=week_start,
+        staffing_plan=staffing_plan,
+        schedule=schedule,
+        source_plan_id=source_plan_id,
+        status=MASTER_STATUS_DRAFT,
+    )
+
+    if not master_id:
+        return None
+
+    return get_master_schedule_for_week(week_start)
+
+
 # ==============================================================================
-# SECTION 13 — AVAILABILITY CACHE / BACKGROUND REANALYSIS
+# SECTION 13 — MASTER SCHEDULE EDIT HELPERS
+# ==============================================================================
+
+def normalize_assignment_list(assignments: Any) -> List[Dict[str, Any]]:
+    """
+    Normalize employee assignment payloads.
+
+    Accepts:
+    - list of full employee dicts
+    - list of {id, name, role}
+    - empty list
+    """
+    if not isinstance(assignments, list):
+        return []
+
+    normalized = []
+
+    for assignment in assignments:
+        if not isinstance(assignment, dict):
+            continue
+
+        normalized.append({
+            "id": assignment.get("id"),
+            "name": assignment.get("name", "Unnamed Employee"),
+            "role": assignment.get("role", ""),
+            "hourly_rate": assignment.get("hourly_rate", 0),
+            "preference": assignment.get("preference", "Any"),
+        })
+
+    return normalized
+
+
+def update_master_schedule_role(
+    week_start: str,
+    day: str,
+    shift: str,
+    role: str,
+    assignments: List[Dict[str, Any]],
+    edited_by: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    master = get_master_schedule_for_week(week_start)
+
+    if not master:
+        return None
+
+    if day not in DAYS or shift not in SHIFTS or role not in ROLES:
+        return None
+
+    schedule = clean_schedule_roles(master.get("schedule", empty_schedule()))
+    schedule[day][shift][role] = normalize_assignment_list(assignments)
+
+    master["schedule"] = schedule
+    master["updated_at"] = datetime.utcnow().isoformat()
+    master.setdefault("edit_history", []).append({
+        "type": "role_update",
+        "day": day,
+        "shift": shift,
+        "role": role,
+        "edited_by": edited_by,
+        "timestamp": master["updated_at"],
+    })
+
+    return replace_master_schedule_record(master)
+
+
+def update_master_schedule_shift(
+    week_start: str,
+    day: str,
+    shift: str,
+    shift_payload: Dict[str, Any],
+    edited_by: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    master = get_master_schedule_for_week(week_start)
+
+    if not master:
+        return None
+
+    if day not in DAYS or shift not in SHIFTS:
+        return None
+
+    schedule = clean_schedule_roles(master.get("schedule", empty_schedule()))
+
+    for role in ROLES:
+        schedule[day][shift][role] = normalize_assignment_list(
+            shift_payload.get(role, [])
+        )
+
+    master["schedule"] = schedule
+    master["updated_at"] = datetime.utcnow().isoformat()
+    master.setdefault("edit_history", []).append({
+        "type": "shift_update",
+        "day": day,
+        "shift": shift,
+        "edited_by": edited_by,
+        "timestamp": master["updated_at"],
+    })
+
+    return replace_master_schedule_record(master)
+
+
+def update_master_schedule_day(
+    week_start: str,
+    day: str,
+    day_payload: Dict[str, Any],
+    edited_by: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    master = get_master_schedule_for_week(week_start)
+
+    if not master:
+        return None
+
+    if day not in DAYS:
+        return None
+
+    schedule = clean_schedule_roles(master.get("schedule", empty_schedule()))
+
+    for shift in SHIFTS:
+        shift_payload = day_payload.get(shift, {})
+
+        for role in ROLES:
+            schedule[day][shift][role] = normalize_assignment_list(
+                shift_payload.get(role, [])
+            )
+
+    master["schedule"] = schedule
+    master["updated_at"] = datetime.utcnow().isoformat()
+    master.setdefault("edit_history", []).append({
+        "type": "day_update",
+        "day": day,
+        "edited_by": edited_by,
+        "timestamp": master["updated_at"],
+    })
+
+    return replace_master_schedule_record(master)
+
+
+def replace_master_schedule_record(
+    updated_master: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    store = load_master_schedule_store()
+    masters = store.get("master_schedules", [])
+
+    updated = False
+    output = []
+
+    for master in masters:
+        if int(master.get("id", -1)) == int(updated_master.get("id", -2)):
+            output.append(updated_master)
+            updated = True
+        else:
+            output.append(master)
+
+    if not updated:
+        return None
+
+    store["master_schedules"] = output
+
+    if not save_master_schedule_store(store):
+        return None
+
+    return updated_master
+
+
+# ==============================================================================
+# SECTION 14 — AVAILABILITY CACHE / BACKGROUND REANALYSIS
 # ==============================================================================
 
 _AVAILABILITY_CACHE: Dict[str, Any] = {}
@@ -790,9 +1117,6 @@ def find_available_employees_cached(
 
 
 def trigger_background_reanalysis(plan_id: int) -> None:
-    """
-    Future hook for reanalysis when employee availability changes.
-    """
     def reanalyze() -> None:
         plan = load_staffing_plan(plan_id)
 
@@ -808,7 +1132,7 @@ def trigger_background_reanalysis(plan_id: int) -> None:
 
 
 # ==============================================================================
-# SECTION 14 — FUTURE SHIFT SWAP / DROP / APPROVAL STRUCTURES
+# SECTION 15 — FUTURE SHIFT SWAP / DROP / APPROVAL STRUCTURES
 # ==============================================================================
 
 def build_shift_change_request_stub(
@@ -819,12 +1143,6 @@ def build_shift_change_request_stub(
     role: str,
     target_employee_id: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """
-    Future structure for:
-    - shift drops
-    - shift swaps
-    - manager approvals
-    """
     return {
         "request_type": request_type,
         "status": "pending_manager_approval",
@@ -838,16 +1156,12 @@ def build_shift_change_request_stub(
 
 
 # ==============================================================================
-# SECTION 15 — FUTURE EXPANSION BLOCKS
+# SECTION 16 — FUTURE EXPANSION BLOCKS
 # ==============================================================================
-# Future Section Ideas:
-#
-# SECTION 15A — Real database-backed StaffingPlan CRUD
-# SECTION 15B — Fair schedule rotation / hour balancing
-# SECTION 15C — Manager approval queue logic
-# SECTION 15D — Employee shift acceptance workflow
-# SECTION 15E — Schedule publishing history
-# SECTION 15F — Auto-save persisted schedules
-#
-# Add new blocks below this line without modifying previous sections.
+# SECTION 16A — Real database-backed StaffingPlan CRUD
+# SECTION 16B — Fair schedule rotation / hour balancing
+# SECTION 16C — Manager approval queue logic
+# SECTION 16D — Employee shift acceptance workflow
+# SECTION 16E — Schedule publishing history
+# SECTION 16F — Auto-save persisted schedules
 # ==============================================================================

@@ -5,15 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{ dashboard.page.title }} | Table Stack v4</title>
 
-    <!-- Preconnect to Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
 
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-    <!-- Main Dashboard CSS (Phase 8 enhanced) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
@@ -21,7 +17,7 @@
 <div class="app-shell">
 
     <!-- ========================================================= -->
-    <!-- SIDEBAR (with dynamic active state)                       -->
+    <!-- RESTORED SIDEBAR (matches schedule_setup.html)           -->
     <!-- ========================================================= -->
     <aside class="sidebar">
         <div class="brand">
@@ -34,26 +30,53 @@
 
         <nav class="nav">
             <a href="/dashboard" class="active">📊 Dashboard</a>
-            <a href="#" id="nav-sales">💰 Sales</a>
+            <a href="/sales">💰 Sales</a>
             <a href="#" id="nav-labor">⏱️ Labor</a>
-            <a href="/schedule/setup" id="nav-staffing">👥 Staffing</a>
+            <a href="/schedule/setup">👥 Staffing</a>
+            <a href="/schedule/employees">👤 Employee Availability</a>
             <a href="#" id="nav-reports">📑 Reports</a>
             <a href="#" id="nav-forecast">🔮 Forecasting</a>
         </nav>
 
         <div class="sidebar-footer">
-            <p>System Status</p>
-            <strong id="live-status">🟢 Online</strong>
-            <button id="theme-toggle" class="ghost" style="margin-top: 1rem; width: 100%;">🌓 Dark / Light</button>
+            <div>
+                <p>System Status</p>
+                <strong id="live-status">🟢 Online</strong>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <div style="margin-top:1rem;font-size:0.85rem;line-height:1.4;">
+                <p style="color:var(--text-muted);">Signed in as</p>
+                <strong>{{ current_user.email }}</strong>
+                <p style="margin-top:0.25rem;color:var(--text-muted);">
+                    Role: <strong>{{ current_user.role|title }}</strong>
+                </p>
+            </div>
+
+            <a href="/security" class="ghost" style="margin-top:1rem;width:100%;display:flex;justify-content:center;text-decoration:none;">
+                🔐 Security Settings
+            </a>
+
+            <a href="/logout" class="danger" style="margin-top:0.5rem;width:100%;display:flex;justify-content:center;text-decoration:none;">
+                🚪 Logout
+            </a>
+            {% endif %}
+
+            <button id="theme-toggle" class="ghost" style="margin-top:1rem;width:100%;">
+                🌓 Dark / Light
+            </button>
+
+            <p style="font-size:0.7rem;margin-top:0.75rem;color:var(--text-muted);text-align:center;">
+                Session expires after inactivity
+            </p>
         </div>
     </aside>
 
     <!-- ========================================================= -->
-    <!-- MAIN CONTENT                                              -->
+    <!-- MAIN CONTENT (unchanged from your working version)       -->
     <!-- ========================================================= -->
     <main class="main-content">
 
-        <!-- -------------------- HEADER ------------------------- -->
         <header class="page-header">
             <div>
                 <p class="eyebrow">Restaurant Intelligence Command Center</p>
@@ -68,7 +91,7 @@
             </div>
         </header>
 
-        <!-- -------------------- FILE UPLOAD STATUS (Phase 8) ----------------- -->
+        <!-- File upload status area -->
         <div id="upload-status-area" style="display: none; margin-bottom: 1.5rem;">
             <div class="panel" style="background: var(--bg-card); border-left: 4px solid var(--blue);">
                 <div class="flex justify-between items-center">
@@ -83,7 +106,7 @@
             </div>
         </div>
 
-        <!-- -------------------- METRICS GRID -------------------- -->
+        <!-- Metrics grid -->
         <section class="metrics-grid">
             {% for metric in dashboard.summary_metrics %}
             <div class="metric-card" data-metric="{{ metric.label }}">
@@ -97,9 +120,8 @@
             {% endfor %}
         </section>
 
-        <!-- -------------------- CHART + INSIGHTS ----------------- -->
+        <!-- Chart + Insights -->
         <div class="two-columns">
-            <!-- CHART PANEL -->
             <div class="panel chart-panel">
                 <div class="panel-header split">
                     <div>
@@ -117,7 +139,6 @@
                 </div>
             </div>
 
-            <!-- INSIGHTS PANEL (AI recommendations) -->
             <div class="panel">
                 <div class="panel-header">
                     <h2>AI Recommendations</h2>
@@ -135,9 +156,8 @@
             </div>
         </div>
 
-        <!-- -------------------- LABOR OPTIMIZER + FORECAST ------- -->
+        <!-- Labor Optimizer + Forecast -->
         <div class="two-columns">
-            <!-- LABOR OPTIMIZER -->
             <div class="panel">
                 <div class="panel-header">
                     <h2>📊 Labor Optimizer</h2>
@@ -156,7 +176,6 @@
                 </div>
             </div>
 
-            <!-- FORECAST PREVIEW -->
             <div class="panel">
                 <div class="panel-header split">
                     <div>
@@ -175,7 +194,7 @@
             </div>
         </div>
 
-        <!-- -------------------- WEEKLY PERFORMANCE TABLE --------- -->
+        <!-- Weekly Performance Table -->
         <section class="panel">
             <div class="panel-header split">
                 <div>
@@ -216,7 +235,7 @@
             </div>
         </section>
 
-        <!-- -------------------- MODULE ROADMAP ------------------- -->
+        <!-- Module Roadmap -->
         <section class="panel roadmap-panel">
             <div class="panel-header">
                 <h2>🚀 Expansion Modules</h2>
@@ -235,9 +254,7 @@
     </main>
 </div>
 
-<!-- ========================================================= -->
-<!-- MODAL: Target Labor Settings (enhanced)                   -->
-<!-- ========================================================= -->
+<!-- Modals (unchanged) -->
 <div id="settings-modal" class="modal">
     <div class="modal-content">
         <span class="close">&times;</span>
@@ -254,9 +271,6 @@
     </div>
 </div>
 
-<!-- ========================================================= -->
-<!-- PHASE 8: FILE UPLOAD MODAL (for better user feedback)     -->
-<!-- ========================================================= -->
 <div id="upload-modal" class="modal">
     <div class="modal-content" style="max-width: 500px;">
         <span class="close-upload">&times;</span>
@@ -273,17 +287,32 @@
     </div>
 </div>
 
-<!-- ========================================================= -->
-<!-- BACKEND DATA INJECTION (for JavaScript)                  -->
-<!-- ========================================================= -->
 <script>
-    // The full dashboard context from Flask (safe tojson)
     const dashboardData = {{ dashboard | tojson }};
     console.log("Dashboard data injected:", dashboardData);
 </script>
 
-<!-- Main Dashboard JS (Phase 8 enhanced) -->
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 
+<script>
+    // Theme toggle fallback (in case dashboard.js doesn't handle it)
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            const html = document.documentElement;
+            const cur = html.getAttribute('data-theme');
+            const next = cur === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    }
+    // Coming soon for placeholder nav items
+    document.querySelectorAll('#nav-labor, #nav-reports, #nav-forecast').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            alert('This module is coming in a future phase');
+        });
+    });
+</script>
 </body>
 </html>

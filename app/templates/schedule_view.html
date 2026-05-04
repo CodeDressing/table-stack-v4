@@ -1,3 +1,6 @@
+<!-- =========================================================
+SECTION 01 — DOCUMENT SETUP
+========================================================= -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,65 +11,113 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 
+    <!-- =========================================================
+    SECTION 02 — SCHEDULE VIEW PAGE CSS
+    ========================================================= -->
     <style>
+        .schedule-view-page {
+            align-items: flex-start;
+        }
+
+        .schedule-view-main {
+            flex: 1;
+            width: calc(100% - 280px);
+            max-width: none;
+            margin: 0;
+            padding: 1.25rem 1.5rem 2rem;
+        }
+
+        .schedule-view-header {
+            margin-bottom: 1rem;
+        }
+
         .master-banner {
             background: var(--bg-card);
             border: 1px solid var(--border-light);
             border-left: 4px solid var(--blue);
             border-radius: var(--radius-md);
             padding: 1rem 1.25rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .master-banner p {
+            margin-top: 0.35rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
         .schedule-section {
-            margin-top: 2rem;
+            margin-top: 0;
+        }
+
+        .shift-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.25rem 0 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .shift-toolbar h2 {
+            margin: 0;
+            font-size: 1.15rem;
+        }
+
+        .schedule-grid-scroll {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            background: var(--bg-card);
+            box-shadow: var(--shadow-sm);
         }
 
         .schedule-grid {
             display: grid;
-            grid-template-columns: 130px repeat(7, minmax(120px, 1fr));
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            margin-bottom: 2rem;
+            grid-template-columns: 120px repeat(7, minmax(150px, 1fr));
+            min-width: 1170px;
         }
 
         .schedule-grid-header {
             background: var(--bg-surface);
             font-weight: 800;
-            font-size: 0.75rem;
-            padding: 0.65rem 0.5rem;
-            text-align: center;
-            border-bottom: 2px solid var(--border-medium);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+            padding: 0.7rem 0.6rem;
             border-right: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            min-height: 46px;
         }
 
         .schedule-grid-header:first-child {
             text-align: left;
-            padding-left: 0.75rem;
         }
 
         .schedule-role-label {
-            font-size: 0.72rem;
+            font-size: 0.76rem;
             font-weight: 800;
-            color: var(--text-secondary);
-            padding: 0.55rem 0.75rem;
-            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 0.65rem 0.7rem;
+            background: var(--bg-surface);
             border-right: 1px solid var(--border-light);
             border-bottom: 1px solid var(--border-light);
             display: flex;
             align-items: center;
+            min-height: 66px;
         }
 
         .schedule-cell {
             padding: 0.45rem 0.5rem;
             border-right: 1px solid var(--border-light);
             border-bottom: 1px solid var(--border-light);
-            min-height: 62px;
-            vertical-align: top;
-            position: relative;
+            min-height: 66px;
+            background: var(--bg-card);
         }
 
         .schedule-cell:hover {
@@ -74,32 +125,33 @@
         }
 
         .emp-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            background: rgba(37,99,235,0.12);
-            color: var(--blue);
-            border-radius: 20px;
-            padding: 0.18rem 0.55rem;
-            font-size: 0.68rem;
+            display: block;
+            width: fit-content;
+            max-width: 100%;
+            background: #1e3a8a;
+            color: white;
+            border-radius: 8px;
+            padding: 0.28rem 0.55rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            margin: 0.12rem 0.08rem;
-            white-space: nowrap;
+            line-height: 1.2;
+            margin: 0.16rem 0;
+            white-space: normal;
+            word-break: break-word;
         }
 
         .emp-chip.dinner {
-            background: rgba(124,58,237,0.12);
-            color: #7c3aed;
+            background: #5b21b6;
         }
 
         .no-staff {
-            font-size: 0.65rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
             font-style: italic;
         }
 
         .cell-actions {
-            margin-top: 0.45rem;
+            margin-top: 0.4rem;
             display: flex;
             gap: 0.35rem;
             flex-wrap: wrap;
@@ -110,28 +162,17 @@
             background: var(--bg-surface);
             color: var(--text-primary);
             border-radius: 999px;
-            padding: 0.2rem 0.55rem;
+            padding: 0.18rem 0.5rem;
             font-size: 0.65rem;
             cursor: pointer;
             transition: var(--transition);
+            box-shadow: none;
         }
 
         .mini-btn:hover {
             border-color: var(--blue);
             color: var(--blue);
-        }
-
-        .shift-toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin: 1.5rem 0 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .shift-toolbar h2 {
-            margin: 0;
+            transform: none;
         }
 
         .edit-modal-grid {
@@ -156,24 +197,50 @@
             color: var(--text-primary);
         }
 
-        .edit-assignment-row button {
-            flex: 0 0 auto;
-        }
-
         .save-status {
             font-size: 0.75rem;
             color: var(--text-muted);
             margin-top: 0.5rem;
         }
+
+        .sidebar-action-link {
+            margin-top: 0.6rem;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        @media (max-width: 1200px) {
+            .schedule-view-main {
+                width: calc(100% - 240px);
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .schedule-view-main {
+                width: 100%;
+            }
+
+            .schedule-grid {
+                grid-template-columns: 105px repeat(7, minmax(135px, 1fr));
+                min-width: 1050px;
+            }
+        }
     </style>
 </head>
 
 <body>
-<div class="app-shell">
 
-    <!-- ========================================================= -->
-    <!-- SIDEBAR                                                  -->
-    <!-- ========================================================= -->
+<!-- =========================================================
+SECTION 03 — APP SHELL
+========================================================= -->
+<div class="app-shell schedule-view-page">
+
+    <!-- =========================================================
+    SECTION 04 — SIDEBAR
+    ========================================================= -->
     <aside class="sidebar">
         <div class="brand">
             <div class="brand-mark">TS</div>
@@ -208,11 +275,11 @@
                 </p>
             </div>
 
-            <a href="/security" class="ghost" style="margin-top:1rem;width:100%;display:flex;justify-content:center;text-decoration:none;">
+            <a href="/security" class="ghost sidebar-action-link">
                 🔐 Security Settings
             </a>
 
-            <a href="/logout" class="danger" style="margin-top:0.5rem;width:100%;display:flex;justify-content:center;text-decoration:none;">
+            <a href="/logout" class="danger sidebar-action-link">
                 🚪 Logout
             </a>
             {% endif %}
@@ -227,11 +294,11 @@
         </div>
     </aside>
 
-    <!-- ========================================================= -->
-    <!-- MAIN CONTENT                                             -->
-    <!-- ========================================================= -->
-    <main class="main-content">
-        <header class="page-header">
+    <!-- =========================================================
+    SECTION 05 — MAIN CONTENT
+    ========================================================= -->
+    <main class="main-content schedule-view-main">
+        <header class="page-header schedule-view-header">
             <div>
                 <p class="eyebrow">Phase 11 · Editable Master Schedule</p>
                 <h1>{{ plan_name }}</h1>
@@ -240,6 +307,7 @@
                     Edit individual day / shift / role assignments and save them back to the master schedule.
                 </p>
             </div>
+
             <div class="header-actions">
                 <button class="ghost" onclick="window.location.href='/schedule/setup'">← Setup</button>
                 <button id="export-master-btn" class="ghost">💾 Export Master</button>
@@ -247,11 +315,13 @@
             </div>
         </header>
 
-        <div class="master-banner">
-            <strong>Current Master Schedule:</strong>
-            This view now reads from the saved master schedule when available.
-            Edits made here save back to the current master schedule for this week.
-        </div>
+        <section class="master-banner">
+            <strong>Current Master Schedule</strong>
+            <p>
+                This view reads from the saved master schedule when available.
+                Names are rendered safely from employee objects, strings, or manual edits.
+            </p>
+        </section>
 
         <section class="schedule-section" id="schedule-section">
             <div id="schedule-grid-container"></div>
@@ -259,12 +329,13 @@
     </main>
 </div>
 
-<!-- ========================================================= -->
-<!-- EDIT ROLE MODAL                                           -->
-<!-- ========================================================= -->
+<!-- =========================================================
+SECTION 06 — EDIT ROLE MODAL
+========================================================= -->
 <div id="edit-role-modal" class="modal">
     <div class="modal-content" style="max-width: 560px;">
         <span class="close" id="close-edit-modal">&times;</span>
+
         <h2>Edit Shift Assignments</h2>
         <p id="edit-modal-context" style="color:var(--text-muted);font-size:0.85rem;"></p>
 
@@ -280,6 +351,9 @@
     </div>
 </div>
 
+<!-- =========================================================
+SECTION 07 — BACKEND DATA INJECTION
+========================================================= -->
 <script>
     window.masterScheduleData = {
         planId: {{ plan_id | tojson }},
@@ -293,40 +367,115 @@
     };
 
     let currentEditContext = null;
+</script>
 
+<!-- =========================================================
+SECTION 08 — UTILITY HELPERS
+========================================================= -->
+<script>
     function escapeHtml(value) {
-        if (!value) return '';
+        if (value === null || value === undefined) return "";
+
         return String(value).replace(/[&<>"']/g, function(match) {
             return {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
             }[match];
         });
     }
 
-    function initTheme() {
-        const saved = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', saved);
+    function getEmployeeName(employee) {
+        if (!employee) return "";
 
-        const toggle = document.getElementById('theme-toggle');
+        if (typeof employee === "string") {
+            return employee;
+        }
+
+        if (typeof employee === "object") {
+            return (
+                employee.name ||
+                employee.full_name ||
+                employee.employee_name ||
+                employee.display_name ||
+                "Unnamed Employee"
+            );
+        }
+
+        return String(employee);
+    }
+
+    function normalizeAssignment(employee, fallbackRole) {
+        if (!employee) {
+            return {
+                id: null,
+                name: "",
+                role: fallbackRole || "",
+                hourly_rate: 0,
+                preference: "Manual Edit"
+            };
+        }
+
+        if (typeof employee === "string") {
+            return {
+                id: null,
+                name: employee,
+                role: fallbackRole || "",
+                hourly_rate: 0,
+                preference: "Manual Edit"
+            };
+        }
+
+        if (typeof employee === "object") {
+            return {
+                id: employee.id || null,
+                name: getEmployeeName(employee),
+                role: employee.role || fallbackRole || "",
+                hourly_rate: employee.hourly_rate || employee.hourlyRate || 0,
+                preference: employee.preference || "Any"
+            };
+        }
+
+        return {
+            id: null,
+            name: String(employee),
+            role: fallbackRole || "",
+            hourly_rate: 0,
+            preference: "Manual Edit"
+        };
+    }
+
+    function initTheme() {
+        const saved = localStorage.getItem("theme") || "light";
+        document.documentElement.setAttribute("data-theme", saved);
+
+        const toggle = document.getElementById("theme-toggle");
         if (toggle) {
-            toggle.onclick = () => {
-                const current = document.documentElement.getAttribute('data-theme');
-                const next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
+            toggle.onclick = function() {
+                const current = document.documentElement.getAttribute("data-theme");
+                const next = current === "dark" ? "light" : "dark";
+                document.documentElement.setAttribute("data-theme", next);
+                localStorage.setItem("theme", next);
             };
         }
     }
+</script>
 
+<!-- =========================================================
+SECTION 09 — SCHEDULE DATA HELPERS
+========================================================= -->
+<script>
     function getAssignments(day, shift, role) {
         return window.masterScheduleData.schedule?.[day]?.[shift]?.[role] || [];
     }
 
     function setAssignments(day, shift, role, assignments) {
+        if (!window.masterScheduleData.schedule) {
+            window.masterScheduleData.schedule = {};
+        }
+
         if (!window.masterScheduleData.schedule[day]) {
             window.masterScheduleData.schedule[day] = {};
         }
@@ -337,16 +486,27 @@
 
         window.masterScheduleData.schedule[day][shift][role] = assignments;
     }
+</script>
 
+<!-- =========================================================
+SECTION 10 — SCHEDULE GRID RENDERER
+========================================================= -->
+<script>
     function renderScheduleGrid() {
-        const container = document.getElementById('schedule-grid-container');
-        const { days, shifts, roles } = window.masterScheduleData;
+        const container = document.getElementById("schedule-grid-container");
 
-        let html = '';
+        if (!container) return;
 
-        shifts.forEach(shift => {
-            const shiftClass = shift.toLowerCase().includes('morning') ? 'morning' : 'dinner';
-            const shiftIcon = shiftClass === 'morning' ? '☀️' : '🌙';
+        const data = window.masterScheduleData || {};
+        const days = data.days || [];
+        const shifts = data.shifts || [];
+        const roles = data.roles || [];
+
+        let html = "";
+
+        shifts.forEach(function(shift) {
+            const shiftClass = String(shift).toLowerCase().includes("morning") ? "morning" : "dinner";
+            const shiftIcon = shiftClass === "morning" ? "☀️" : "🌙";
 
             html += `
                 <div class="shift-toolbar">
@@ -357,14 +517,16 @@
                 </div>
             `;
 
-            html += '<div class="schedule-grid">';
+            html += `
+                <div class="schedule-grid-scroll">
+                    <div class="schedule-grid">
+                        <div class="schedule-grid-header">Role</div>
+            `;
 
-            html += `<div class="schedule-grid-header">${shiftIcon} ${escapeHtml(shift)}</div>`;
-
-            days.forEach(day => {
+            days.forEach(function(day) {
                 html += `
                     <div class="schedule-grid-header">
-                        ${escapeHtml(day.substring(0, 3))}
+                        ${escapeHtml(day)}
                         <div style="margin-top:0.35rem;">
                             <button class="mini-btn" onclick="saveDay('${escapeHtml(day)}')">Save Day</button>
                         </div>
@@ -372,75 +534,107 @@
                 `;
             });
 
-            roles.forEach(role => {
-                const hasAnything = days.some(day => getAssignments(day, shift, role).length > 0);
-
-                if (!hasAnything) return;
-
+            roles.forEach(function(role) {
                 html += `<div class="schedule-role-label">${escapeHtml(role)}</div>`;
 
-                days.forEach(day => {
+                days.forEach(function(day) {
                     const assigned = getAssignments(day, shift, role);
 
-                    html += `<div class="schedule-cell" data-day="${escapeHtml(day)}" data-shift="${escapeHtml(shift)}" data-role="${escapeHtml(role)}">`;
+                    html += `
+                        <div class="schedule-cell"
+                             data-day="${escapeHtml(day)}"
+                             data-shift="${escapeHtml(shift)}"
+                             data-role="${escapeHtml(role)}">
+                    `;
 
-                    if (assigned.length) {
-                        assigned.forEach(employee => {
-                            html += `<span class="emp-chip ${shiftClass}">${escapeHtml(employee.name)}</span>`;
+                    if (Array.isArray(assigned) && assigned.length > 0) {
+                        assigned.forEach(function(employee) {
+                            html += `
+                                <div class="emp-chip ${shiftClass}">
+                                    ${escapeHtml(getEmployeeName(employee))}
+                                </div>
+                            `;
                         });
                     } else {
-                        html += '<span class="no-staff">—</span>';
+                        html += `<span class="no-staff">—</span>`;
                     }
 
                     html += `
-                        <div class="cell-actions">
-                            <button class="mini-btn" onclick="openRoleEditor('${escapeHtml(day)}', '${escapeHtml(shift)}', '${escapeHtml(role)}')">
-                                Edit
-                            </button>
+                            <div class="cell-actions">
+                                <button class="mini-btn" onclick="openRoleEditor('${escapeHtml(day)}', '${escapeHtml(shift)}', '${escapeHtml(role)}')">
+                                    Edit
+                                </button>
+                            </div>
                         </div>
                     `;
-
-                    html += '</div>';
                 });
             });
 
-            html += '</div>';
+            html += `
+                    </div>
+                </div>
+            `;
         });
 
         container.innerHTML = html || '<div class="panel">No assignments found for this master schedule.</div>';
     }
+</script>
 
+<!-- =========================================================
+SECTION 11 — EDIT MODAL LOGIC
+========================================================= -->
+<script>
     function openRoleEditor(day, shift, role) {
-        currentEditContext = { day, shift, role };
+        currentEditContext = { day: day, shift: shift, role: role };
 
-        const modal = document.getElementById('edit-role-modal');
-        const context = document.getElementById('edit-modal-context');
+        const modal = document.getElementById("edit-role-modal");
+        const context = document.getElementById("edit-modal-context");
 
-        context.textContent = `${day} · ${shift} · ${role}`;
+        if (context) {
+            context.textContent = `${day} · ${shift} · ${role}`;
+        }
 
         renderAssignmentEditor(getAssignments(day, shift, role));
 
-        document.getElementById('edit-save-status').textContent = '';
-        modal.style.display = 'flex';
+        const status = document.getElementById("edit-save-status");
+        if (status) status.textContent = "";
+
+        if (modal) modal.style.display = "flex";
     }
 
     function renderAssignmentEditor(assignments) {
-        const list = document.getElementById('edit-assignment-list');
+        const list = document.getElementById("edit-assignment-list");
 
-        if (!assignments.length) {
-            assignments = [{ id: null, name: '', role: currentEditContext?.role || '' }];
+        if (!list) return;
+
+        let safeAssignments = Array.isArray(assignments)
+            ? assignments.map(function(item) {
+                return normalizeAssignment(item, currentEditContext?.role || "");
+            })
+            : [];
+
+        if (!safeAssignments.length) {
+            safeAssignments = [
+                {
+                    id: null,
+                    name: "",
+                    role: currentEditContext?.role || "",
+                    hourly_rate: 0,
+                    preference: "Manual Edit"
+                }
+            ];
         }
 
-        list.innerHTML = '';
+        list.innerHTML = "";
 
-        assignments.forEach((assignment, index) => {
-            const row = document.createElement('div');
-            row.className = 'edit-assignment-row';
+        safeAssignments.forEach(function(assignment, index) {
+            const row = document.createElement("div");
+            row.className = "edit-assignment-row";
 
             row.innerHTML = `
                 <input
                     type="text"
-                    value="${escapeHtml(assignment.name || '')}"
+                    value="${escapeHtml(assignment.name || "")}"
                     data-assignment-index="${index}"
                     placeholder="Employee name">
                 <button class="mini-btn" type="button" onclick="removeAssignmentRow(${index})">Remove</button>
@@ -451,10 +645,10 @@
     }
 
     function getEditorAssignments() {
-        const inputs = document.querySelectorAll('#edit-assignment-list input');
+        const inputs = document.querySelectorAll("#edit-assignment-list input");
         const assignments = [];
 
-        inputs.forEach(input => {
+        inputs.forEach(function(input) {
             const name = input.value.trim();
 
             if (!name) return;
@@ -462,9 +656,9 @@
             assignments.push({
                 id: null,
                 name: name,
-                role: currentEditContext.role,
+                role: currentEditContext?.role || "",
                 hourly_rate: 0,
-                preference: 'Manual Edit'
+                preference: "Manual Edit"
             });
         });
 
@@ -473,66 +667,68 @@
 
     function removeAssignmentRow(indexToRemove) {
         const current = getEditorAssignments();
-        const next = current.filter((_, index) => index !== indexToRemove);
+        const next = current.filter(function(_, index) {
+            return index !== indexToRemove;
+        });
+
         renderAssignmentEditor(next);
     }
+</script>
 
-    document.getElementById('add-assignment-btn').addEventListener('click', () => {
-        const current = getEditorAssignments();
-        current.push({
-            id: null,
-            name: '',
-            role: currentEditContext?.role || '',
-            hourly_rate: 0,
-            preference: 'Manual Edit'
-        });
-        renderAssignmentEditor(current);
-    });
-
+<!-- =========================================================
+SECTION 12 — SAVE ROLE / DAY / SHIFT
+========================================================= -->
+<script>
     async function saveCurrentRole() {
         if (!currentEditContext) return;
 
-        const { day, shift, role } = currentEditContext;
+        const day = currentEditContext.day;
+        const shift = currentEditContext.shift;
+        const role = currentEditContext.role;
         const assignments = getEditorAssignments();
 
-        const status = document.getElementById('edit-save-status');
-        status.textContent = 'Saving...';
+        const status = document.getElementById("edit-save-status");
+        if (status) status.textContent = "Saving...";
 
         try {
             const response = await fetch(
                 `/schedule/api/master-schedule/${encodeURIComponent(window.masterScheduleData.weekStart)}/day/${encodeURIComponent(day)}/shift/${encodeURIComponent(shift)}/role/${encodeURIComponent(role)}`,
                 {
-                    method: 'PUT',
+                    method: "PUT",
                     headers: {
-                        'Content-Type': 'application/json'
+                        "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ assignments })
+                    body: JSON.stringify({ assignments: assignments })
                 }
             );
 
-            if (!response.ok) throw new Error('Save failed');
-
-            const data = await response.json();
+            if (!response.ok) {
+                throw new Error("Save failed");
+            }
 
             setAssignments(day, shift, role, assignments);
             renderScheduleGrid();
 
-            status.textContent = 'Saved.';
-            setTimeout(() => {
-                document.getElementById('edit-role-modal').style.display = 'none';
+            if (status) status.textContent = "Saved.";
+
+            setTimeout(function() {
+                const modal = document.getElementById("edit-role-modal");
+                if (modal) modal.style.display = "none";
             }, 500);
 
         } catch (error) {
-            status.textContent = 'Could not save this role.';
+            console.error(error);
+            if (status) status.textContent = "Could not save this role.";
         }
     }
 
     async function saveDay(day) {
         const dayPayload = {};
 
-        window.masterScheduleData.shifts.forEach(shift => {
+        window.masterScheduleData.shifts.forEach(function(shift) {
             dayPayload[shift] = {};
-            window.masterScheduleData.roles.forEach(role => {
+
+            window.masterScheduleData.roles.forEach(function(role) {
                 dayPayload[shift][role] = getAssignments(day, shift, role);
             });
         });
@@ -541,16 +737,22 @@
             const response = await fetch(
                 `/schedule/api/master-schedule/${encodeURIComponent(window.masterScheduleData.weekStart)}/day/${encodeURIComponent(day)}`,
                 {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
                     body: JSON.stringify({ day_payload: dayPayload })
                 }
             );
 
-            if (!response.ok) throw new Error('Save failed');
+            if (!response.ok) {
+                throw new Error("Save failed");
+            }
+
             alert(`${day} saved to master schedule.`);
 
         } catch (error) {
+            console.error(error);
             alert(`Could not save ${day}.`);
         }
     }
@@ -558,10 +760,10 @@
     async function saveShift(shift) {
         const requests = [];
 
-        window.masterScheduleData.days.forEach(day => {
+        window.masterScheduleData.days.forEach(function(day) {
             const shiftPayload = {};
 
-            window.masterScheduleData.roles.forEach(role => {
+            window.masterScheduleData.roles.forEach(function(role) {
                 shiftPayload[role] = getAssignments(day, shift, role);
             });
 
@@ -569,8 +771,10 @@
                 fetch(
                     `/schedule/api/master-schedule/${encodeURIComponent(window.masterScheduleData.weekStart)}/day/${encodeURIComponent(day)}/shift/${encodeURIComponent(shift)}`,
                     {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
                         body: JSON.stringify({ shift_payload: shiftPayload })
                     }
                 )
@@ -580,64 +784,158 @@
         try {
             await Promise.all(requests);
             alert(`${shift} saved across the week.`);
+
         } catch (error) {
+            console.error(error);
             alert(`Could not save ${shift}.`);
         }
     }
-
-    function exportMasterSchedule() {
-        const blob = new Blob(
-            [JSON.stringify(window.masterScheduleData, null, 2)],
-            { type: 'application/json' }
-        );
-
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-
-        anchor.href = url;
-        anchor.download = `master_schedule_${window.masterScheduleData.weekStart || 'week'}.json`;
-
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-
-        URL.revokeObjectURL(url);
-    }
-
-    document.getElementById('save-role-btn').addEventListener('click', saveCurrentRole);
-
-    document.getElementById('close-edit-modal').addEventListener('click', () => {
-        document.getElementById('edit-role-modal').style.display = 'none';
-    });
-
-    document.getElementById('cancel-edit-btn').addEventListener('click', () => {
-        document.getElementById('edit-role-modal').style.display = 'none';
-    });
-
-    window.onclick = event => {
-        const modal = document.getElementById('edit-role-modal');
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    };
-
-    document.getElementById('export-master-btn').addEventListener('click', exportMasterSchedule);
-
-    document.getElementById('scroll-top-btn').addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    document.querySelectorAll('#nav-labor, #nav-reports, #nav-forecast').forEach(link => {
-        link.addEventListener('click', event => {
-            event.preventDefault();
-            alert('This module is coming in a future phase');
-        });
-    });
-
-    initTheme();
-    renderScheduleGrid();
 </script>
 
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<!-- =========================================================
+SECTION 13 — EXPORT MASTER SCHEDULE
+========================================================= -->
+<script>
+    async function exportMasterSchedule() {
+        const button = document.getElementById("export-master-btn");
+        const originalText = button ? button.textContent : "";
+
+        try {
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Saving...";
+            }
+
+            const defaultName = `Master Schedule ${window.masterScheduleData.weekStart || "Current Week"}`;
+            const masterName = prompt("Name this master schedule:", defaultName);
+
+            if (!masterName || !masterName.trim()) {
+                return;
+            }
+
+            const payload = {
+                staffing_plan: window.masterScheduleData.schedule || {},
+                name: masterName.trim(),
+                week_start: window.masterScheduleData.weekStart || null,
+                source_plan_id: window.masterScheduleData.planId || null,
+                source_plan_name: window.masterScheduleData.planName || "",
+                saved_from: "schedule_view_export_master"
+            };
+
+            const response = await fetch("/schedule/api/masters", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json().catch(function() {
+                return {};
+            });
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || "Master save failed.");
+            }
+
+            alert(`✅ Master saved to website as "${masterName.trim()}".`);
+
+        } catch (error) {
+            console.error("Export master save failed:", error);
+            alert(`❌ Could not save master to website. ${error.message || ""}`);
+
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = originalText || "💾 Export Master";
+            }
+        }
+    }
+</script>
+
+<!-- =========================================================
+SECTION 14 — EVENT BINDINGS
+========================================================= -->
+<script>
+    function bindScheduleViewEvents() {
+        const saveRoleBtn = document.getElementById("save-role-btn");
+        if (saveRoleBtn) {
+            saveRoleBtn.addEventListener("click", saveCurrentRole);
+        }
+
+        const closeEditModal = document.getElementById("close-edit-modal");
+        if (closeEditModal) {
+            closeEditModal.addEventListener("click", function() {
+                document.getElementById("edit-role-modal").style.display = "none";
+            });
+        }
+
+        const cancelEditBtn = document.getElementById("cancel-edit-btn");
+        if (cancelEditBtn) {
+            cancelEditBtn.addEventListener("click", function() {
+                document.getElementById("edit-role-modal").style.display = "none";
+            });
+        }
+
+        const addAssignmentBtn = document.getElementById("add-assignment-btn");
+        if (addAssignmentBtn) {
+            addAssignmentBtn.addEventListener("click", function() {
+                const current = getEditorAssignments();
+
+                current.push({
+                    id: null,
+                    name: "",
+                    role: currentEditContext?.role || "",
+                    hourly_rate: 0,
+                    preference: "Manual Edit"
+                });
+
+                renderAssignmentEditor(current);
+            });
+        }
+
+        const exportMasterBtn = document.getElementById("export-master-btn");
+        if (exportMasterBtn) {
+            exportMasterBtn.addEventListener("click", exportMasterSchedule);
+        }
+
+        const scrollTopBtn = document.getElementById("scroll-top-btn");
+        if (scrollTopBtn) {
+            scrollTopBtn.addEventListener("click", function() {
+                window.scrollTo({
+                    top: 0,
+                    behavior: "smooth"
+                });
+            });
+        }
+
+        document.querySelectorAll("#nav-labor, #nav-reports, #nav-forecast").forEach(function(link) {
+            link.addEventListener("click", function(event) {
+                event.preventDefault();
+                alert("This module is coming in a future phase");
+            });
+        });
+
+        window.addEventListener("click", function(event) {
+            const modal = document.getElementById("edit-role-modal");
+
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
+</script>
+
+<!-- =========================================================
+SECTION 15 — PAGE STARTUP
+========================================================= -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initTheme();
+        renderScheduleGrid();
+        bindScheduleViewEvents();
+    });
+</script>
+
 </body>
 </html>

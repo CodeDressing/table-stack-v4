@@ -199,23 +199,50 @@ def schedule_setup():
 # ==============================================================================
 # SECTION 05 — SCHEDULE VIEW PAGE
 # ==============================================================================
+# ==============================================================================
+# SECTION 05 — SCHEDULE VIEW PAGE (HARD FIX – GUARANTEED RENDER)
+# ==============================================================================
 
 @schedule_bp.route("/view/<int:plan_id>")
 @login_required
 def view_schedule(plan_id: int):
     """Display full editable master schedule for a given plan."""
+
     plan_data = load_staffing_plan(plan_id)
     if not plan_data:
         abort(404, description="Plan not found")
 
-    week_start = plan_data.get("week_start", "")
-    master_schedule = get_master_schedule_for_week(week_start) if week_start else None
+    week_start = plan_data.get("week_start")
 
-    if master_schedule:
-        schedule = master_schedule.get("schedule", {})
-    else:
-        plan = plan_data.get("plan_data", {})
-        schedule = generate_schedule_from_plan(plan)
+    # 🔥 STEP 1 — TRY TO LOAD MASTER SCHEDULE
+    master_schedule = None
+    if week_start:
+        master_schedule = get_master_schedule_for_week(week_start)
+
+    # 🔥 STEP 2 — FORCE VALID SCHEDULE
+    schedule = None
+
+    if master_schedule and isinstance(master_schedule, dict):
+        schedule = master_schedule.get("schedule")
+
+        if schedule:
+            print("✅ USING SAVED MASTER SCHEDULE")
+        else:
+            print("⚠️ MASTER EXISTS BUT EMPTY — FALLING BACK")
+
+    # 🔥 STEP 3 — FALLBACK (THIS GUARANTEES UI NEVER BREAKS)
+    if not schedule:
+        print("⚠️ GENERATING SCHEDULE FROM PLAN")
+        schedule = generate_schedule_from_plan(
+            plan_data.get("plan_data", {})
+        )
+
+    # 🔥 STEP 4 — FINAL SAFETY CHECK
+    if not isinstance(schedule, dict):
+        print("❌ INVALID SCHEDULE STRUCTURE — FORCING EMPTY SAFE OBJECT")
+        schedule = {}
+
+    print("📊 FINAL SCHEDULE KEYS:", list(schedule.keys()) if schedule else "EMPTY")
 
     return render_template(
         "schedule_view.html",
@@ -228,7 +255,6 @@ def view_schedule(plan_id: int):
         plan_id=plan_id,
         master_schedule=master_schedule,
     )
-
 
 # ==============================================================================
 # SECTION 06 — EMPLOYEE AVAILABILITY PAGE
@@ -292,6 +318,9 @@ def api_analyze_live():
 # ==============================================================================
 # SECTION 08 — MASTER SCHEDULE MANAGEMENT (Phase 12 + Most Recent)
 # ==============================================================================
+# ==============================================================================
+# SECTION 08 — MASTER SCHEDULE MANAGEMENT (FIXED SAVE + FULL VIEW SUPPORT)
+# ==============================================================================
 
 @schedule_bp.route("/api/masters", methods=["GET"])
 @login_required
@@ -301,50 +330,99 @@ def api_list_masters():
     masters = [p for p in all_plans if p.get("is_master", False)]
     return jsonify(masters), 200
 
+
 @schedule_bp.route("/api/masters/recent", methods=["GET"])
 @login_required
 def api_most_recent_master():
     """Return the most recently updated master schedule."""
     all_plans = list_staffing_plans()
     masters = [p for p in all_plans if p.get("is_master", False)]
+
     if not masters:
         return jsonify({"error": "No master schedules found"}), 404
-    # Sort by updated_at descending, then created_at
-    recent = max(masters, key=lambda p: (p.get("updated_at") or "", p.get("created_at") or ""))
+
+    recent = max(
+        masters,
+        key=lambda p: (p.get("updated_at") or "", p.get("created_at") or "")
+    )
+
     return jsonify(recent), 200
+
 
 @schedule_bp.route("/api/masters", methods=["POST"])
 @login_required
 def api_save_master():
-    """Save current staffing plan as a master schedule."""
+    """
+    Save current staffing plan as a master schedule
+    AND generate the actual master schedule (FIXES FULL VIEW)
+    """
     data = request.get_json(silent=True)
+
     if not data:
-        return jsonify({"error": "No data provided"}), 400
+        return jsonify({
+            "success": False,
+            "error": "No data provided"
+        }), 400
 
     staffing_plan = data.get("staffing_plan")
-    if not staffing_plan:
-        return jsonify({"error": "Missing staffing_plan"}), 400
+    if not staffing_plan or not isinstance(staffing_plan, dict):
+        return jsonify({
+            "success": False,
+            "error": "Invalid or missing staffing_plan"
+        }), 400
 
-    name = data.get("name", f"Master {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    week_start = data.get("week_start", get_monday_from_request())
+    name = data.get("name") or f"Master {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    week_start = data.get("week_start") or get_monday_from_request()
 
-    plan_id = save_staffing_plan(
-        plan_data=staffing_plan,
-        name=name,
-        notes="Master schedule saved from UI",
-        is_master=True,
-        week_start=week_start,
-    )
-    return jsonify({"success": True, "plan_id": plan_id}), 201
+    try:
+        # ✅ STEP 1 — Save the plan
+        plan_id = save_staffing_plan(
+            plan_data=staffing_plan,
+            name=name,
+            notes="Saved via Export Masters",
+            is_master=True,
+            week_start=week_start,
+        )
+
+        # 🔥 STEP 2 — GENERATE MASTER SCHEDULE (CRITICAL FIX)
+        master_schedule = generate_and_save_master_schedule(
+            week_start=week_start,
+            staffing_plan=staffing_plan,
+            source_plan_id=plan_id,
+        )
+
+        current_app.logger.info(
+            f"[MASTER SAVE] User={current_editor_label()} | PlanID={plan_id} | Week={week_start}"
+        )
+
+        return jsonify({
+            "success": True,
+            "plan_id": plan_id,
+            "week_start": week_start,
+            "name": name,
+            "master_schedule_created": True
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"[MASTER SAVE ERROR] {str(e)}")
+
+        return jsonify({
+            "success": False,
+            "error": "Failed to save master schedule"
+        }), 500
+
 
 @schedule_bp.route("/api/masters/<int:master_id>", methods=["GET"])
 @login_required
 def api_get_master(master_id: int):
     """Load a master schedule by ID."""
     master = load_staffing_plan(master_id)
+
     if not master or not master.get("is_master", False):
         return jsonify({"error": "Master schedule not found"}), 404
+
     return jsonify(master), 200
+
 
 @schedule_bp.route("/api/masters/<int:master_id>", methods=["DELETE"])
 @login_required
